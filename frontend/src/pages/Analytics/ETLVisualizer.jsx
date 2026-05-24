@@ -53,13 +53,13 @@ export default function ETLVisualizer() {
   return (
     <div className="space-y-8 py-4">
       <div className="text-center max-w-2xl mx-auto space-y-3">
-        <div className="inline-flex items-center gap-2 px-3 py-1 bg-brand-500/10 border border-brand-500/20 rounded-full text-brand-400 text-[10px] font-bold uppercase tracking-widest">
+        <div className="inline-flex items-center gap-2 px-3 py-1 bg-brand-500/10 border border-brand-500/20 rounded-full text-brand-500 text-[10px] font-bold uppercase tracking-widest">
            System Intelligence
         </div>
         <h3 className="text-2xl font-bold text-text-primary">Operational-to-Analytical Pipeline</h3>
         <p className="text-sm text-text-muted">
            SmartERP separates operational transaction processing (OLTP) from analytical processing (OLAP) 
-           to ensure system performance and valid decision support.
+           to ensure system performance and valid decision support. This ensures your analytics never slow down your storefront.
         </p>
       </div>
 

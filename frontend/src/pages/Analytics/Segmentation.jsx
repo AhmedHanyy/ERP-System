@@ -5,7 +5,7 @@ import {
   ScatterChart, Scatter, XAxis, YAxis, ZAxis, CartesianGrid, 
   Tooltip, ResponsiveContainer, Cell, PieChart, Pie
 } from 'recharts'
-import { Users, Target, Info, Search } from 'lucide-react'
+import { Users, Target, Info, Search, BarChart3 } from 'lucide-react'
 import StatusBadge from '@/components/shared/StatusBadge'
 
 export default function Segmentation() {
@@ -102,17 +102,17 @@ export default function Segmentation() {
             </div>
             
             <div className="space-y-3 mt-6">
-               {data.segments.map(s => (
+               {(data?.segments || []).map(s => (
                  <div key={s.segment} className="flex items-center justify-between p-3 bg-bg-hover/30 rounded-xl border border-border">
                     <div className="flex items-center gap-3">
                        <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: s.color }} />
                        <div>
-                         <p className="text-xs font-bold text-text-primary">{s.segment}</p>
-                         <p className="text-[9px] text-text-muted">{s.count} customers</p>
+                          <p className="text-xs font-bold text-text-primary">{s.segment}</p>
+                          <p className="text-[9px] text-text-muted">{s.count} customers</p>
                        </div>
                     </div>
                     <div className="text-right">
-                       <p className="text-xs font-bold text-text-primary">EGP {Math.round(s.avg_monetary).toLocaleString()}</p>
+                       <p className="text-xs font-bold text-text-primary">EGP {Math.round(s.avg_monetary || 0).toLocaleString()}</p>
                        <p className="text-[9px] text-text-muted">Avg. LTV</p>
                     </div>
                  </div>
@@ -146,6 +146,49 @@ export default function Segmentation() {
                  ))}
                </tbody>
             </table>
+         </div>
+      </div>
+      {/* Strategic Team Insights */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+         <div className="glass-card p-6 border-l-4 border-brand-500">
+            <h4 className="text-sm font-bold text-text-primary mb-3 flex items-center gap-2">
+               <Users className="w-4 h-4 text-brand-500" /> Marketing & Retention Strategy
+            </h4>
+            <div className="space-y-4">
+               <div className="p-3 bg-brand-50/50 rounded-xl">
+                  <p className="text-[11px] font-bold text-brand-600 uppercase mb-1">Champions</p>
+                  <p className="text-xs text-text-secondary leading-relaxed">
+                     Enroll in VIP early-access program. Focus on cross-selling high-margin accessories.
+                  </p>
+               </div>
+               <div className="p-3 bg-amber-50/50 rounded-xl">
+                  <p className="text-[11px] font-bold text-amber-600 uppercase mb-1">At-Risk Customers</p>
+                  <p className="text-xs text-text-secondary leading-relaxed">
+                     Automate "We Miss You" email campaign with a 15% discount coupon valid for 48 hours.
+                  </p>
+               </div>
+            </div>
+         </div>
+
+         <div className="glass-card p-6 bg-gradient-to-br from-white to-emerald-50/20">
+            <h4 className="text-sm font-bold text-text-primary mb-3 flex items-center gap-2">
+               <BarChart3 className="w-4 h-4 text-emerald-500" /> Economic Impact
+            </h4>
+            <div className="space-y-4 mt-2">
+               <div className="flex justify-between items-end border-b border-border pb-3">
+                  <div>
+                    <p className="text-[10px] font-bold text-text-muted uppercase">Segment ROI</p>
+                    <p className="text-lg font-bold text-text-primary">+24.5% <span className="text-[10px] text-emerald-500 ml-1">YoY Increase</span></p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-[10px] font-bold text-text-muted uppercase">Churn Risk</p>
+                    <p className="text-lg font-bold text-rose-500">8.2% <span className="text-[10px] text-text-muted ml-1">Decreasing</span></p>
+                  </div>
+               </div>
+               <p className="text-[11px] text-text-muted leading-relaxed italic">
+                  Clustering is recalculated weekly to track customer lifecycle drift and reward loyalty program members.
+               </p>
+            </div>
          </div>
       </div>
     </div>

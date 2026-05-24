@@ -85,7 +85,7 @@ export default function Customers() {
               <thead>
                 <tr>
                   <th>Customer</th><th>City</th><th>Orders</th>
-                  <th>Lifetime Value</th><th>Segment</th><th>Joined</th><th></th>
+                  <th>Lifetime Value</th><th>Segment</th><th>Churn Risk</th><th>Joined</th><th></th>
                 </tr>
               </thead>
               <tbody>
@@ -106,8 +106,20 @@ export default function Customers() {
                     <td className="font-medium">{c.total_orders}</td>
                     <td className="font-semibold text-accent-emerald">EGP {c.lifetime_value?.toLocaleString()}</td>
                     <td><StatusBadge status={c.segment} /></td>
+                    <td>
+                       <div className="flex items-center gap-2">
+                          <div className={`w-2 h-2 rounded-full ${
+                             c.segment === 'Lost' ? 'bg-rose-500 animate-pulse' :
+                             c.segment === 'At-Risk' ? 'bg-amber-500' :
+                             'bg-emerald-500 opacity-30'
+                          }`} />
+                          <span className="text-[10px] font-bold text-text-secondary uppercase">
+                             {c.segment === 'Lost' ? 'Critical' : c.segment === 'At-Risk' ? 'Elevated' : 'Stable'}
+                          </span>
+                       </div>
+                    </td>
                     <td className="text-text-secondary text-xs">
-                      {format(new Date(c.created_at), 'MMM d, yyyy')}
+                       {format(new Date(c.created_at), 'MMM d, yyyy')}
                     </td>
                     <td>
                       <button

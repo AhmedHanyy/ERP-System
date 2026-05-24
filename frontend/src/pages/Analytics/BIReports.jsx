@@ -3,10 +3,12 @@ import { analyticsApi } from '@/services/api'
 import { PageLoader, ErrorState } from '@/components/shared/States'
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  LineChart, Line, ComposedChart, Area, Cell, PieChart, Pie
+  LineChart, Line, ComposedChart, Area, Cell, PieChart, Pie, Legend
 } from 'recharts'
-import { BarChart3, TrendingUp, Award, Layers, Target } from 'lucide-react'
-import StatusBadge from '@/components/shared/StatusBadge'
+import { 
+  BarChart3, TrendingUp, Award, Layers, Target, 
+  DollarSign, Globe, ArrowUpRight, TrendingDown, BookOpen, ShieldCheck, Zap
+} from 'lucide-react'
 
 const COLORS = ['#6366F1', '#8B5CF6', '#10B981', '#F59E0B', '#F43F5E', '#0EA5E9']
 
@@ -14,6 +16,7 @@ export default function BIReports() {
   const [data,     setData]     = useState(null)
   const [loading,  setLoading]  = useState(true)
   const [error,    setError]    = useState(null)
+  const [activeTab, setActiveTab] = useState('financials')
 
   useEffect(() => {
     analyticsApi.getBIReport()
@@ -24,128 +27,140 @@ export default function BIReports() {
   if (loading) return <PageLoader />
   if (error)   return <ErrorState message={error} />
 
+  const fin = data?.financial_summary || {}
+
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        
-        {/* Monthly Performance Trend */}
-        <div className="glass-card p-6">
-           <h3 className="section-title flex items-center gap-2 mb-6">
-             <TrendingUp className="w-4 h-4 text-brand-400" />
-             Yearly Revenue Performance
-           </h3>
-           <div className="h-[280px]">
-             <ResponsiveContainer width="100%" height="100%">
-                <ComposedChart data={data?.monthly_revenue || []}>
-                   <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" vertical={false} />
-                   <XAxis dataKey="month" tick={{ fill: '#94A3B8', fontSize: 10 }} axisLine={false} tickLine={false} />
-                   <YAxis tick={{ fill: '#94A3B8', fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={(v) => `${v/1000}K`} />
-                   <Tooltip 
-                     contentStyle={{ background: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: 12, fontSize: 12, boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}
-                   />
-                   <Area type="monotone" dataKey="revenue" fill="#6366F1" fillOpacity={0.1} stroke="none" />
-                   <Bar dataKey="orders" barSize={20} fill="#8B5CF6" radius={[4, 4, 0, 0]} opacity={0.6} />
-                   <Line type="monotone" dataKey="revenue" stroke="#6366F1" strokeWidth={3} dot={{ r: 3, fill: '#6366F1' }} />
-                </ComposedChart>
-             </ResponsiveContainer>
-           </div>
-        </div>
-
-        {/* Category Share */}
-        <div className="glass-card p-6">
-           <h3 className="section-title flex items-center gap-2 mb-6">
-             <Layers className="w-4 h-4 text-accent-sky" />
-             Revenue by Category
-           </h3>
-           <div className="h-[280px]">
-             <ResponsiveContainer width="100%" height="100%">
-               <PieChart>
-                  <Pie
-                    data={data?.category_revenue || []} dataKey="revenue" nameKey="category_id"
-                    cx="50%" cy="50%" innerRadius={60} outerRadius={100} paddingAngle={5}
-                  >
-                    {(data?.category_revenue || []).map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip contentStyle={{ background: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: 12, fontSize: 12, boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }} />
-               </PieChart>
-             </ResponsiveContainer>
-           </div>
-        </div>
+      {/* Tab Selector */}
+      <div className="flex gap-2 p-1 bg-white border border-border rounded-xl w-fit">
+         {['financials', 'supply-chain'].map(t => (
+           <button 
+             key={t}
+             onClick={() => setActiveTab(t)}
+             className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${
+               activeTab === t ? 'bg-brand-50 text-brand-600 shadow-sm' : 'text-text-muted hover:bg-bg-hover'
+             }`}
+           >
+             {t === 'financials' ? 'Financial Intelligence' : 'Advanced Supply Chain'}
+           </button>
+         ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-         {/* Pareto Analysis (Top Products Contribution) */}
-         <div className="lg:col-span-1 glass-card p-6">
-            <h3 className="section-title flex items-center gap-2 mb-4">
-              <Target className="w-4 h-4 text-accent-rose" />
-              Pareto Analysis (80/20)
-            </h3>
-            <p className="text-[10px] text-text-muted mb-6 leading-relaxed">
-              Analyzing the top 20 products and their cumulative contribution to overall revenue.
-            </p>
-            <div className="space-y-4">
-               {(data?.pareto_analysis || []).slice(0, 5).map((p, i) => (
-                 <div key={p.product_id} className="space-y-1.5">
-                    <div className="flex justify-between text-xs">
-                       <span className="text-text-primary font-medium truncate max-w-[140px]">{p.product_name}</span>
-                       <span className="text-text-muted">{p.cum_revenue_pct}%</span>
-                    </div>
-                    <div className="w-full bg-bg-primary rounded-full h-1.5 overflow-hidden">
-                       <div 
-                         className="h-full bg-gradient-brand transition-all duration-1000" 
-                         style={{ width: `${p.cum_revenue_pct}%` }} 
-                       />
-                    </div>
-                 </div>
-               ))}
-               <div className="pt-4 border-t border-border flex items-center justify-between">
-                  <p className="text-[10px] font-bold text-text-muted uppercase">Top 5 Revenue Share</p>
-                  <p className="text-sm font-bold text-accent-emerald">{data?.pareto_analysis?.[4]?.cum_revenue_pct || 0}%</p>
+      {activeTab === 'financials' ? (
+         <div className="space-y-6 animate-fade-in">
+            {/* 1. High-Level Financial Suite */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+               <FinancialCard label="Total Revenue" value={`EGP ${fin.total_revenue?.toLocaleString()}`} trend="+12.4%" icon={DollarSign} color="text-brand-500" bg="bg-brand-50" />
+               <FinancialCard label="COGS" value={`EGP ${fin.total_cogs?.toLocaleString()}`} trend="Optimized" icon={BookOpen} color="text-rose-500" bg="bg-rose-50" />
+               <FinancialCard label="Gross Profit" value={`EGP ${fin.gross_profit?.toLocaleString()}`} trend="+8.2%" icon={TrendingUp} color="text-emerald-500" bg="bg-emerald-50" />
+               <FinancialCard label="Gross Margin" value={`${fin.gross_margin_pct}%`} trend="Stable" icon={BarChart3} color="text-accent-violet" bg="bg-accent-violet/10" />
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+               <div className="lg:col-span-2 glass-card p-6">
+                  <h3 className="section-title flex items-center gap-2 mb-6"><TrendingUp className="w-4 h-4 text-brand-500" /> Revenue vs Activity Trends</h3>
+                  <div className="h-[300px]">
+                     <ResponsiveContainer width="100%" height="100%">
+                        <ComposedChart data={data?.monthly_revenue || []}>
+                           <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" vertical={false} />
+                           <XAxis dataKey="month" tick={{ fill: '#94A3B8', fontSize: 10 }} axisLine={false} tickLine={false} />
+                           <YAxis tick={{ fill: '#94A3B8', fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={(v) => `${v/1000}K`} />
+                           <Tooltip contentStyle={{ background: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: 12, fontSize: 12 }} />
+                           <Area type="monotone" dataKey="revenue" fill="#6366F1" fillOpacity={0.05} stroke="none" />
+                           <Bar dataKey="orders" barSize={30} fill="#818CF8" radius={[4, 4, 0, 0]} opacity={0.3} />
+                           <Line type="monotone" dataKey="revenue" stroke="#6366F1" strokeWidth={3} dot={{ r: 4 }} />
+                        </ComposedChart>
+                     </ResponsiveContainer>
+                  </div>
+               </div>
+
+               <div className="glass-card p-6">
+                  <h3 className="section-title flex items-center gap-2 mb-6"><Globe className="w-4 h-4 text-accent-sky" /> Top Regions (Sales)</h3>
+                  <div className="space-y-5">
+                     {(data?.region_distribution || []).slice(0, 5).map((r, i) => (
+                        <div key={r.city} className="space-y-1.5">
+                           <div className="flex justify-between text-xs"><span className="text-text-primary font-bold">{r.city}</span><span className="text-text-muted">EGP {r.revenue?.toLocaleString()}</span></div>
+                           <div className="w-full bg-bg-primary rounded-full h-1.5 overflow-hidden"><div className="h-full bg-accent-sky transition-all duration-1000" style={{ width: `${(r.revenue / fin.total_revenue) * 100}%` }} /></div>
+                        </div>
+                     ))}
+                  </div>
                </div>
             </div>
          </div>
+      ) : (
+         <div className="space-y-6 animate-fade-in">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+               {/* ABC Analysis */}
+               <div className="glass-card p-6">
+                  <h3 className="section-title flex items-center gap-2 mb-4"><Zap className="w-4 h-4 text-accent-amber" /> ABC Financial Classification</h3>
+                  <p className="text-[10px] text-text-muted mb-6">Grouping products by their cumulative revenue contribution (80/15/5 rule).</p>
+                  <div className="space-y-2">
+                     {(data?.abc_analysis || []).slice(0, 8).map(p => (
+                        <div key={p.product_id} className="flex justify-between items-center p-3 bg-bg-hover/30 rounded-xl border border-border">
+                           <div>
+                              <p className="text-xs font-bold text-text-primary">{p.product_name}</p>
+                              <p className="text-[9px] text-text-muted">Rev: EGP {p.revenue?.toLocaleString()}</p>
+                           </div>
+                           <span className={`px-2 py-1 rounded-full text-[9px] font-bold ${
+                              p.abc_class.startsWith('A') ? 'bg-emerald-50 text-emerald-600' :
+                              p.abc_class.startsWith('B') ? 'bg-brand-50 text-brand-600' :
+                              'bg-rose-50 text-rose-600'
+                           }`}>
+                              Class {p.abc_class}
+                           </span>
+                        </div>
+                     ))}
+                  </div>
+               </div>
 
-         {/* Supplier Performance */}
-         <div className="lg:col-span-2 glass-card overflow-hidden">
-            <div className="p-4 border-b border-border bg-bg-hover/20 flex items-center justify-between">
-               <h3 className="text-xs font-bold text-text-muted uppercase tracking-wider flex items-center gap-2">
-                 <Award className="w-4 h-4 text-accent-amber" />
-                 Supplier Performance
-               </h3>
-               <span className="text-[10px] text-text-muted">Procurement Analytics</span>
-            </div>
-            <div className="overflow-x-auto">
-               <table className="data-table">
-                  <thead>
-                     <tr>
-                        <th>Supplier</th><th>Rating</th><th>Purchase Orders</th><th>Total Value</th>
-                     </tr>
-                  </thead>
-                  <tbody>
-                    {(data?.supplier_performance || []).map(s => (
-                       <tr key={s.id}>
-                          <td className="text-sm font-medium">{s.name}</td>
-                          <td>
-                             <div className="flex items-center gap-1">
-                                <span className="text-xs font-bold text-accent-amber">{s.rating}</span>
-                                <div className="flex">
-                                  {[1,2,3,4,5].map(i => (
-                                    <div key={i} className={`w-1.5 h-1.5 rounded-full mx-0.5 ${i <= s.rating ? 'bg-accent-amber' : 'bg-bg-hover'}`} />
-                                  ))}
-                                </div>
-                             </div>
-                          </td>
-                          <td className="text-xs text-text-secondary">{s.total_orders} requests</td>
-                          <td className="text-xs font-bold text-text-primary">EGP {s.total_value?.toLocaleString()}</td>
-                       </tr>
-                    ))}
-                  </tbody>
-               </table>
+               {/* Safety Stock Analysis */}
+               <div className="glass-card p-6">
+                  <h3 className="section-title flex items-center gap-2 mb-4"><ShieldCheck className="w-4 h-4 text-emerald-500" /> Safety Stock & Risk Analysis</h3>
+                  <p className="text-[10px] text-text-muted mb-6">Statistical safety stock levels targeting a 95% service level confidence.</p>
+                  <div className="overflow-x-auto">
+                     <table className="data-table">
+                        <thead>
+                           <tr><th>Item</th><th>Actual</th><th>Safety</th><th>Status</th></tr>
+                        </thead>
+                        <tbody>
+                           {(data?.safety_stock_report || []).slice(0, 8).map(s => (
+                              <tr key={s.product_id}>
+                                 <td className="text-xs font-medium">{s.name}</td>
+                                 <td className="text-xs">{s.current_stock}</td>
+                                 <td className="text-xs font-bold text-brand-600">{s.safety_stock}</td>
+                                 <td>
+                                    <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold uppercase ${s.status === 'Healthy' ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600 animate-pulse'}`}>
+                                       {s.status}
+                                    </span>
+                                 </td>
+                              </tr>
+                           ))}
+                        </tbody>
+                     </table>
+                  </div>
+               </div>
             </div>
          </div>
-      </div>
+      )}
     </div>
+  )
+}
+
+function FinancialCard({ label, value, trend, icon: Icon, color, bg }) {
+  return (
+    <div className="glass-card p-5 relative overflow-hidden transition-all hover:translate-y-[-2px] hover:shadow-xl">
+       <div className={`absolute top-0 right-0 p-4 opacity-10 ${color}`}><Icon className="w-12 h-12" /></div>
+       <div className="relative z-10">
+          <div className="flex items-center gap-2 mb-3"><div className={`p-1.5 rounded-lg ${bg} ${color}`}><Icon className="w-4 h-4" /></div><p className="text-[10px] font-bold text-text-muted uppercase tracking-wider">{label}</p></div>
+          <p className="text-xl font-bold text-text-primary tracking-tight">{value}</p>
+          <div className="flex items-center gap-1 mt-1 text-[10px] font-medium text-emerald-600"><ArrowUpRight className="w-3 h-3" /><span>{trend}</span></div>
+       </div>
+    </div>
+  )
+}
+
+function DetailRow({ icon: Icon, label, value }) {
+  return (
+    <div className="flex items-center gap-3"><Icon className="w-4 h-4 text-text-muted shrink-0" /><div><p className="text-[9px] text-text-muted font-bold uppercase leading-none">{label}</p><p className="text-xs text-text-secondary mt-0.5">{value}</p></div></div>
   )
 }

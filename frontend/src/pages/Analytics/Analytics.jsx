@@ -4,14 +4,14 @@ import Forecasting  from './Forecasting'
 import Segmentation from './Segmentation'
 import MarketBasket from './MarketBasket'
 import BIReports    from './BIReports'
-import ETLVisualizer from './ETLVisualizer'
+import Simulator    from './Simulator'
 
 const TABS = [
   { path: 'forecasting', label: 'Forecasting',   icon: Sparkles, color: 'text-accent-violet' },
   { path: 'segmentation', label: 'Segmentation', icon: Users,    color: 'text-accent-emerald' },
   { path: 'market-basket', label: 'Basket Rules', icon: ShoppingCart, color: 'text-accent-sky' },
   { path: 'bi-reports',    label: 'BI Reports',   icon: BarChart3, color: 'text-brand-400' },
-  { path: 'etl-flow',      label: 'Data Pipeline', icon: Database,  color: 'text-text-muted' },
+  { path: 'simulator',     label: 'Scenario Simulator', icon: Database,  color: 'text-text-muted' },
 ]
 
 export default function Analytics() {
@@ -25,8 +25,8 @@ export default function Analytics() {
               <Sparkles className="w-5 h-5 text-accent-violet animate-pulse-slow" />
            </div>
            <div>
-             <h2 className="page-title text-gradient-brand">Smart Insights</h2>
-             <p className="page-subtitle">AI & Data Mining powered decision support</p>
+             <h2 className="page-title text-gradient-brand">Business Intelligence Engine</h2>
+             <p className="page-subtitle">AI-driven decision support & predictive retail mining</p>
            </div>
         </div>
 
@@ -35,7 +35,7 @@ export default function Analytics() {
           {TABS.map(tab => (
             <NavLink
               key={tab.path}
-              to={tab.path}
+              to={`/analytics/${tab.path}`}
               className={({ isActive }) => `
                 flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition-all duration-200
                 ${isActive 
@@ -58,7 +58,7 @@ export default function Analytics() {
           <Route path="segmentation"  element={<Segmentation />} />
           <Route path="market-basket" element={<MarketBasket />} />
           <Route path="bi-reports"    element={<BIReports />} />
-          <Route path="etl-flow"      element={<ETLVisualizer />} />
+          <Route path="simulator"     element={<Simulator />} />
         </Routes>
       </div>
     </div>

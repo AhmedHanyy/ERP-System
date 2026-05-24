@@ -122,6 +122,42 @@ export default function MarketBasket() {
            )}
         </div>
       </div>
+      {/* Retail Action Plan */}
+      <div className="glass-card p-6 bg-gradient-to-br from-white to-sky-50/20">
+         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+            <div>
+               <h4 className="text-sm font-bold text-text-primary flex items-center gap-2">
+                 <ShoppingCart className="w-4 h-4 text-accent-sky" /> Merchandising Recommendations
+               </h4>
+               <p className="text-[11px] text-text-muted mt-1">Actions derived from current transaction associations.</p>
+            </div>
+            <div className="flex gap-2">
+               <span className="badge-info text-[9px] uppercase tracking-wider">Top 10 Patterns</span>
+               <span className="badge-brand text-[9px] uppercase tracking-wider">High Confidence</span>
+            </div>
+         </div>
+
+         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="space-y-2">
+               <p className="text-[11px] font-bold text-text-primary border-b border-border pb-1">Product Bundling</p>
+               <p className="text-[11px] text-text-secondary leading-relaxed">
+                  Based on current <span className="font-bold text-accent-sky">Lift</span> scores, bundle items with Confidence {'>'} 40% into a single SKU for a 10% discount to increase AOV (Average Order Value).
+               </p>
+            </div>
+            <div className="space-y-2">
+               <p className="text-[11px] font-bold text-text-primary border-b border-border pb-1">Shelf Placement</p>
+               <p className="text-[11px] text-text-secondary leading-relaxed">
+                  Position Consequents at the back of the store to force customers to traverse other aisles after picking up the Antecedent.
+               </p>
+            </div>
+            <div className="space-y-2">
+               <p className="text-[11px] font-bold text-text-primary border-b border-border pb-1">Dynamic Promotion</p>
+               <p className="text-[11px] text-text-secondary leading-relaxed">
+                  Trigger automated cross-sell popups for the consequents when the antecedent is added to the cart in the Shopify storefront.
+               </p>
+            </div>
+         </div>
+      </div>
     </div>
   )
 }

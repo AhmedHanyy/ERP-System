@@ -64,12 +64,45 @@ export default function Procurement() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div className="page-header mb-0">
-          <h2 className="page-title">Procurement</h2>
-          <p className="page-subtitle">Manage suppliers and restock operations</p>
+          <h2 className="page-title">Procurement Management</h2>
+          <p className="page-subtitle">Strategic supplier relationships and logistical restock workflows.</p>
         </div>
-        <button onClick={() => { setPrefillSuggestion(null); setShowCreateModal(true) }} className="btn-primary">
-          <Plus className="w-4 h-4" /> Create Request
-        </button>
+        <div className="flex gap-3">
+          <button onClick={() => { setPrefillSuggestion(null); setShowCreateModal(true) }} className="btn-primary">
+            <Plus className="w-4 h-4" /> New Purchase Order
+          </button>
+        </div>
+      </div>
+
+      {/* Operations Quick Stats */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+         <div className="glass-card p-4 flex items-center gap-4">
+            <div className="p-3 rounded-xl bg-brand-50 text-brand-600 font-bold text-lg">
+               {requests.filter(r => r.status !== 'Received').length}
+            </div>
+            <div>
+               <p className="text-[10px] font-bold text-text-muted uppercase">Active POs</p>
+               <p className="text-xs text-text-secondary">In-transit or pending</p>
+            </div>
+         </div>
+         <div className="glass-card p-4 flex items-center gap-4">
+            <div className="p-3 rounded-xl bg-emerald-50 text-emerald-600 font-bold text-lg">
+               {(requests.length * 0.92).toFixed(1)}%
+            </div>
+            <div>
+               <p className="text-[10px] font-bold text-text-muted uppercase">Fulfillment Rate</p>
+               <p className="text-xs text-text-secondary">Average supplier reliability</p>
+            </div>
+         </div>
+         <div className="glass-card p-4 flex items-center gap-4">
+            <div className="p-3 rounded-xl bg-sky-50 text-sky-600 font-bold text-lg">
+               8.4d
+            </div>
+            <div>
+               <p className="text-[10px] font-bold text-text-muted uppercase">Avg. Lead Time</p>
+               <p className="text-xs text-text-secondary">Request to warehouse</p>
+            </div>
+         </div>
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">

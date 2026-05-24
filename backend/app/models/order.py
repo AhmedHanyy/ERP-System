@@ -29,7 +29,7 @@ class Order(db.Model):
     @property
     def profit(self):
         return sum(
-            (item.unit_price - item.product.cost) * item.quantity
+            (item.unit_price - (item.product.cost or 0)) * item.quantity
             for item in self.items if item.product
         )
 

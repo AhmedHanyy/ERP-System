@@ -10,7 +10,7 @@ const NAV_ITEMS = [
   { to: '/inventory',   icon: Package,         label: 'Inventory Control' },
   { to: '/orders',      icon: ShoppingBag,     label: 'Sales Orders' },
   { to: '/customers',   icon: Users,           label: 'CRM' },
-  { to: '/procurement', icon: Truck,           label: 'Supply Chain' },
+  { to: '/procurement', icon: Truck,           label: 'Procurement' },
   { to: '/analytics',   icon: BarChart3,       label: 'Business Intelligence' },
 ]
 

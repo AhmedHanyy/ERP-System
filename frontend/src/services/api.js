@@ -43,6 +43,7 @@ export const inventoryApi = {
 export const customersApi = {
   list:     (params) => api.get('/customers/', { params }),
   get:      (id)     => api.get(`/customers/${id}`),
+  getInsights: (id)  => api.get(`/analytics/customer-insights/${id}`),
   segments: ()       => api.get('/customers/segments'),
 }
 
