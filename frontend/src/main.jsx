@@ -19,7 +19,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
             borderRadius: '12px',
           },
           success: { iconTheme: { primary: '#10B981', secondary: '#131C2E' } },
-          error:   { iconTheme: { primary: '#F43F5E', secondary: '#131C2E' } },
+          error: { iconTheme: { primary: '#F43F5E', secondary: '#131C2E' } },
         }}
       />
     </BrowserRouter>
