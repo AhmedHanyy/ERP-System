@@ -13,7 +13,9 @@ def token_required(f):
     def decorated(*args, **kwargs):
         token = None
         if 'Authorization' in request.headers:
-            token = request.headers['Authorization'].split(" ")[1]
+            parts = request.headers['Authorization'].split(" ")
+            if len(parts) > 1:
+                token = parts[1]
         
         if not token:
             return jsonify({'message': 'Token is missing!'}), 401
@@ -21,7 +23,11 @@ def token_required(f):
         try:
             data = jwt.decode(token, current_app.config['SECRET_KEY'], algorithms=["HS256"])
             current_user = User.query.get(data['id'])
-        except:
+            if not current_user:
+                return jsonify({'message': 'Token is invalid (User not found)!'}), 401
+            if current_user.status != 'Active':
+                return jsonify({'message': 'Account is deactivated!'}), 403
+        except Exception as e:
             return jsonify({'message': 'Token is invalid!'}), 401
         
         return f(current_user, *args, **kwargs)
@@ -49,6 +55,9 @@ def login():
     if not user or not user.verify_password(data['password']):
         return jsonify({'message': 'Invalid credentials!'}), 401
     
+    if user.status != 'Active':
+        return jsonify({'message': 'Account is deactivated. Contact administrator.'}), 403
+    
     token = jwt.encode({
         'id': user.id,
         'username': user.username,
@@ -56,7 +65,8 @@ def login():
         'exp': datetime.datetime.utcnow() + datetime.timedelta(hours=24)
     }, current_app.config['SECRET_KEY'], algorithm="HS256")
     
-    # Audit Log
+    # Update activity and Audit Log
+    user.last_login = datetime.datetime.utcnow()
     log = AuditLog(user_id=user.id, action="Logged in", target_table="users", target_id=user.id)
     db.session.add(log)
     db.session.commit()

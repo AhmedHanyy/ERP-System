@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react'
-import { ShoppingBag, DollarSign, Truck, BarChart2, Calendar, Target, AlertTriangle, Users } from 'lucide-react'
-import { dashboardApi } from '@/services/api'
+import { ShoppingBag, DollarSign, Truck, BarChart2, Calendar, Target, AlertTriangle, Users, TrendingUp, Layers } from 'lucide-react'
+import { dashboardApi, analyticsApi } from '@/services/api'
 import { useAuth } from '@/context/AuthContext'
 import KPICard  from '@/components/shared/KPICard'
 import { PageLoader, ErrorState } from '@/components/shared/States'
+import { ForecastingWidget, SegmentationWidget, BasketAnalysisWidget } from './InformaticsWidgets'
 import SalesPerformanceChart from './SalesPerformanceChart'
 import TopSKUProgress        from './TopSKUProgress'
 import RecentOrdersTable     from './RecentOrdersTable'
@@ -12,94 +13,152 @@ import ProcurementTimeline   from './ProcurementTimeline'
 
 export default function Dashboard() {
   const { user } = useAuth()
-  const [kpis,    setKpis]    = useState(null)
+  const [kpis,      setKpis]      = useState(null)
+  const [forecast,  setForecast]  = useState(null)
+  const [rfm,       setRfm]       = useState(null)
+  const [basket,    setBasket]    = useState(null)
+  
   const [loading, setLoading] = useState(true)
   const [error,   setError]   = useState(null)
 
-  const loadKPIs = async () => {
+  const loadData = async () => {
     try {
       setLoading(true)
-      const data = await dashboardApi.getKPIs()
-      setKpis(data)
-    } catch { setError('Failed to load dashboard') }
-    finally { setLoading(false) }
+      setError(null)
+      
+      const [kpiData, forecastData, rfmData, basketData] = await Promise.all([
+        dashboardApi.getKPIs().catch(e => { console.error('KPI error:', e); return null; }),
+        analyticsApi.getForecast(30).catch(e => { console.error('Forecast error:', e); return null; }),
+        analyticsApi.getRFM().catch(e => { console.error('RFM error:', e); return null; }),
+        analyticsApi.getMarketBasket().catch(e => { console.error('Basket error:', e); return null; })
+      ])
+      
+      setKpis(kpiData)
+      setForecast(forecastData)
+      setRfm(rfmData)
+      setBasket(basketData)
+    } catch (e) {
+      setError('Failed to load dashboard analytics')
+    } finally {
+      setLoading(false)
+    }
   }
 
-  useEffect(() => { loadKPIs() }, [])
+  useEffect(() => { loadData() }, [])
 
   if (loading) return <PageLoader />
-  if (error)   return <ErrorState message={error} onRetry={loadKPIs} />
+  if (error)   return <ErrorState message={error} onRetry={loadData} />
 
-  // Role-Based Views Logic
   const role = user?.role || 'Admin'
 
   return (
-    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      {/* Dynamic Header */}
-      <div className="flex items-center justify-between">
+    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-6 duration-700 pb-12">
+      {/* Premium Header */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div>
-          <h2 className="text-3xl font-extrabold text-slate-900 tracking-tight">{role} Performance Hub</h2>
-          <p className="text-slate-500 mt-1">Unified command center for SmartERP operations.</p>
+          <div className="flex items-center gap-3 mb-2">
+            <span className="badge-brand">{role} Workspace</span>
+            <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
+            <span className="text-[10px] font-black text-text-muted uppercase tracking-widest">Live System Update</span>
+          </div>
+          <h2 className="text-4xl font-black text-text-primary tracking-tight">Enterprise Intelligence</h2>
+          <p className="text-text-muted font-medium mt-1">Strategic command center for SmartERP ecosystem.</p>
         </div>
-        <div className="hidden md:flex items-center gap-4 bg-white p-1.5 rounded-2xl shadow-sm border border-slate-100">
-            <span className="px-4 py-2 text-sm font-semibold text-slate-600 bg-slate-50 rounded-xl flex items-center gap-2">
-                <Calendar className="w-4 h-4 text-slate-400" /> Fiscal Q3
-            </span>
+        
+        <div className="flex items-center gap-3">
+            <div className="p-3 bg-white dark:bg-slate-900 border border-border-main rounded-2xl flex items-center gap-4 px-6 shadow-sm">
+                <div className="text-right">
+                    <p className="text-[10px] font-black text-text-muted uppercase tracking-widest">Current Period</p>
+                    <p className="text-sm font-bold text-text-primary">Fiscal Q3 / 2026</p>
+                </div>
+                <div className="w-px h-8 bg-border-main" />
+                <Calendar className="w-5 h-5 text-blue-500" />
+            </div>
         </div>
       </div>
 
-      {/* KPI Section - Personalized by Role */}
+      {/* 🚀 Role-Specific KPI Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        {role === 'Admin' && (
-            <>
-                <KPICard title="Revenue" value={kpis?.revenue?.value || 0} prefix="EGP " icon={DollarSign} color="emerald" change={8.2} />
-                <KPICard title="Orders" value={kpis?.total_orders?.value || 0} icon={ShoppingBag} color="brand" change={12} />
-                <KPICard title="Customer LTV" value={8400} prefix="EGP " icon={Users} color="sky" label="Avg. per segment" />
-                <KPICard title="Growth Target" value={92} suffix="%" icon={Target} color="amber" label="On track for Q4" />
-            </>
-        )}
-        {role === 'Procurement Staff' && (
-            <>
-                <KPICard title="Critical Reorders" value={5} icon={AlertTriangle} color="rose" label="Action required" />
-                <KPICard title="Active Requests" value={12} icon={Truck} color="brand" />
-                <KPICard title="Lead Time Avg." value={4.2} suffix=" Days" icon={Calendar} color="sky" />
-                <KPICard title="Budget Utilized" value={65} suffix="%" icon={DollarSign} color="amber" />
-            </>
-        )}
-        {(role === 'Operations Manager' || role === 'Customer Service') && (
-            <>
-                <KPICard title="Daily Orders" value={42} icon={ShoppingBag} color="emerald" change={15} />
-                <KPICard title="Fulfillment Rate" value={98.5} suffix="%" icon={Target} color="brand" />
-                <KPICard title="Active Returns" value={3} icon={AlertTriangle} color="amber" />
-                <KPICard title="Customer Rating" value={4.9} suffix="/5" icon={Target} color="sky" />
-            </>
-        )}
+        {renderRoleKPIs(role, kpis)}
       </div>
 
-      {/* Layout Grid - Strategic vs Operational */}
+      {/* 📊 Strategic Intelligence Row (Task 5) */}
+      {(role === 'Admin' || role === 'Analytics Manager') && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div className="lg:col-span-1"><ForecastingWidget stats={forecast} /></div>
+            <div className="lg:col-span-1"><SegmentationWidget data={rfm} /></div>
+            <div className="lg:col-span-1"><BasketAnalysisWidget bundles={basket} /></div>
+        </div>
+      )}
+
+      {/* 🛠️ Visual Layout Grid (Task 6) */}
       <div className="grid grid-cols-1 xl:grid-cols-12 gap-8">
-        {/* Main Strategic Section */}
+        {/* Main Section */}
         <div className="xl:col-span-8 space-y-8">
           {(role === 'Admin' || role === 'Analytics Manager') && (
-            <div className="glass-card p-6 shadow-sm border-slate-100/50">
+            <div className="glass-card p-8 group">
                <SalesPerformanceChart />
             </div>
           )}
+
+          {(role === 'Procurement Staff' || role === 'Operations Manager') && (
+            <RecentOrdersTable />
+          )}
           
-          <div className="glass-card p-0 overflow-hidden shadow-sm border-slate-100/50">
-             <RecentOrdersTable compact />
-          </div>
+          {role === 'Analytics Manager' && <RecentOrdersTable />}
+          {role === 'Admin' && <RecentOrdersTable />}
         </div>
 
-        {/* Side Operational Section */}
+        {/* Info Section */}
         <div className="xl:col-span-4 space-y-8">
-          <div className="glass-card p-6 shadow-sm border-slate-100/50">
-             <TopSKUProgress />
-          </div>
-          
-          {role === 'Procurement Staff' ? <ProcurementTimeline hideFull /> : <CustomerInsights />}
+          <TopSKUProgress />
+          {renderSidePanel(role, rfm)}
         </div>
       </div>
     </div>
   )
+}
+
+function renderRoleKPIs(role, kpis) {
+    if (role === 'Admin') return (
+        <>
+            <KPICard title="Institutional Revenue" value={kpis?.revenue?.value || 0} prefix="EGP " icon={DollarSign} color="emerald" change={kpis?.revenue?.change || 0} />
+            <KPICard title="Total Settlements" value={kpis?.total_orders?.value || 0} icon={ShoppingBag} color="brand" change={kpis?.total_orders?.change || 0} />
+            <KPICard title="Projected Margin" value={kpis?.margin?.value || 0} suffix="%" icon={TrendingUp} color="sky" change={kpis?.margin?.change || 0} label="MoM Margin Change" />
+            <KPICard title="Growth Velocity" value={kpis?.revenue?.change || 0} suffix="%" icon={Target} color="amber" label="MoM Growth Rate" />
+        </>
+    )
+    if (role === 'Procurement Staff') return (
+        <>
+            <KPICard title="Stock Depletion" value={kpis?.low_stock_alerts?.value || 0} icon={AlertTriangle} color="rose" label="CRITICAL REORDERS" />
+            <KPICard title="Transit Assets" value={kpis?.transit_assets?.count || 0} icon={Truck} color="brand" label={`Value: EGP ${kpis?.transit_assets?.value?.toLocaleString() || 0}`} />
+            <KPICard title="Supply Latency" value={kpis?.supply_latency || 7.2} suffix=" Days" icon={Calendar} color="sky" label="Average Delivery Lead" />
+            <KPICard title="Resource Allocation" value={kpis?.resource_allocation || 45} suffix="%" icon={DollarSign} color="amber" label="Budget Allocated" />
+        </>
+    )
+    if (role === 'Operations Manager') return (
+        <>
+            <KPICard title="Throughput" value={kpis?.throughput || 0} icon={ShoppingBag} color="emerald" label="Orders Handled" />
+            <KPICard title="Service Level" value={kpis?.service_level || 98.5} suffix="%" icon={Target} color="brand" label="On-Time Delivery SLA" />
+            <KPICard title="Process Alerts" value={kpis?.process_alerts || 0} icon={AlertTriangle} color="amber" label="Urgent Alerts Pending" />
+            <KPICard title="Efficiency Index" value={4.9} suffix="/5" icon={TrendingUp} color="sky" label="SOP Health Index" />
+        </>
+    )
+    return (
+        <>
+            <KPICard title="System Orders" value={kpis?.total_orders?.value || 0} icon={ShoppingBag} color="brand" change={kpis?.total_orders?.change || 0} />
+            <KPICard title="Market Revenue" value={kpis?.revenue?.value || 0} prefix="EGP " icon={DollarSign} color="sky" change={kpis?.revenue?.change || 0} />
+            <KPICard title="Client Retention" value={kpis?.client_retention || 88} suffix="%" icon={Users} color="emerald" label="Returning Customers" />
+            <KPICard title="System SLA" value={99.9} suffix="%" icon={Target} color="amber" label="System Availability" />
+        </>
+    )
+}
+
+function renderSidePanel(role, rfm) {
+    switch(role) {
+        case 'Procurement Staff': return <ProcurementTimeline hideFull />;
+        case 'Customer Service': return <CustomerInsights />;
+        case 'Analytics Manager': return <SegmentationWidget data={rfm} />;
+        default: return <CustomerInsights />;
+    }
 }

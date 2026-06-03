@@ -30,20 +30,20 @@ export default function AuditLogs() {
                 <p className="page-subtitle">Immutable audit trail of all administrative and operational actions.</p>
             </div>
 
-            <div className="glass-card shadow-sm border-slate-100/50 overflow-hidden">
+            <div className="glass-card shadow-sm border-border overflow-hidden">
                 <table className="w-full text-left border-collapse">
-                    <thead className="bg-slate-50/50 border-b border-slate-100">
+                    <thead className="bg-bg-hover border-b border-border">
                         <tr>
-                            <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Timestamp</th>
-                            <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">User</th>
-                            <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Action</th>
-                            <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Object</th>
-                            <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">New State</th>
+                            <th className="px-6 py-4 text-[10px] font-bold text-text-muted uppercase tracking-widest">Timestamp</th>
+                            <th className="px-6 py-4 text-[10px] font-bold text-text-muted uppercase tracking-widest">User</th>
+                            <th className="px-6 py-4 text-[10px] font-bold text-text-muted uppercase tracking-widest">Action</th>
+                            <th className="px-6 py-4 text-[10px] font-bold text-text-muted uppercase tracking-widest">Object</th>
+                            <th className="px-6 py-4 text-[10px] font-bold text-text-muted uppercase tracking-widest">New State</th>
                         </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-50">
+                    <tbody className="divide-y divide-border">
                         {logs.map(log => (
-                            <tr key={log.id} className="hover:bg-slate-50/30 transition-colors">
+                            <tr key={log.id} className="hover:bg-bg-hover transition-colors">
                                 <td className="px-6 py-4 text-xs font-mono text-slate-400">
                                     <div className="flex items-center gap-2">
                                         <Clock className="w-3 h-3" />

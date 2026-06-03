@@ -37,9 +37,9 @@ export default function RecentOrdersTable() {
                 <th className="pb-3">Net Profit</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-border">
               {orders.map((o, idx) => (
-                <tr key={o.id} className="group cursor-pointer hover:bg-slate-50/50" onClick={() => navigate('/orders')}>
+                <tr key={o.id} className="group cursor-pointer hover:bg-bg-hover" onClick={() => navigate('/orders')}>
                   <td className="py-4">
                     <span className="text-[13px] font-bold text-brand-600">#{o.order_number?.substring(0, 6) || '---'}</span>
                   </td>

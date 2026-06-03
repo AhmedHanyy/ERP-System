@@ -1,12 +1,14 @@
 from flask import Blueprint, jsonify, request
 from app import db
 from app.models import Customer, Order
+from .auth import token_required, roles_required
 
 customers_bp = Blueprint('customers', __name__)
 
 
 @customers_bp.route('/')
-def list_customers():
+@roles_required('Admin', 'Customer Service')
+def list_customers(current_user):
     page     = request.args.get('page', 1, type=int)
     per_page = request.args.get('per_page', 20, type=int)
     segment  = request.args.get('segment', '')
@@ -32,7 +34,8 @@ def list_customers():
 
 
 @customers_bp.route('/<int:customer_id>')
-def get_customer(customer_id):
+@roles_required('Admin', 'Customer Service')
+def get_customer(current_user, customer_id):
     c = Customer.query.get_or_404(customer_id)
     data = c.to_dict()
     data['orders'] = [o.to_dict(include_items=True) for o in c.orders.order_by(Order.created_at.desc()).limit(20).all()]
@@ -40,7 +43,8 @@ def get_customer(customer_id):
 
 
 @customers_bp.route('/segments')
-def segment_summary():
+@token_required
+def segment_summary(current_user):
     from sqlalchemy import func
     results = db.session.query(Customer.segment, func.count(Customer.id)).group_by(Customer.segment).all()
     return jsonify([{'segment': r[0], 'count': r[1]} for r in results])

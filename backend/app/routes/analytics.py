@@ -8,28 +8,111 @@ from app.models import Order, OrderItem, Product, Inventory, Supplier, Procureme
 from sqlalchemy import func
 from datetime import datetime, timedelta
 import math
+from .auth import token_required, roles_required
 
 analytics_bp = Blueprint('analytics', __name__)
 
 @analytics_bp.route('/forecast')
-def revenue_forecast():
+@roles_required('Admin', 'Analytics Manager')
+def revenue_forecast(current_user):
     days = request.args.get('days', 30, type=int)
     return jsonify(forecast_overall_revenue(days_ahead=days))
 
+@analytics_bp.route('/forecast/product/<int:product_id>')
+@roles_required('Admin', 'Analytics Manager')
+def product_demand_forecast(current_user, product_id):
+    days = request.args.get('days', 30, type=int)
+    return jsonify(forecast_product_demand(product_id, days_ahead=days))
+
+@analytics_bp.route('/rfm')
+@roles_required('Admin', 'Analytics Manager')
+def get_rfm(current_user):
+    return jsonify(compute_rfm())
+
+@analytics_bp.route('/customer-insights/<int:customer_id>')
+@roles_required('Admin', 'Customer Service', 'Analytics Manager')
+def customer_insights(current_user, customer_id):
+    customer = Customer.query.get_or_404(customer_id)
+    orders = Order.query.filter(Order.customer_id == customer_id, Order.status != 'Cancelled').all()
+    
+    if not orders:
+        return jsonify({
+            'behavior_report': {
+                'order_consistency': 'Irregular',
+                'avg_basket_value': 0,
+                'prediction': 'Unknown'
+            },
+            'top_products': []
+        })
+    
+    avg_basket = sum(o.total_amount for o in orders) / len(orders)
+    
+    if len(orders) > 5:
+        import numpy as np
+        order_dates = sorted([o.created_at for o in orders])
+        intervals = [(order_dates[i] - order_dates[i-1]).days for i in range(1, len(order_dates))]
+        if intervals:
+            std_dev = np.std(intervals) if len(intervals) > 1 else 0
+            consistency = "Consistent" if std_dev < 10 else "Periodic"
+        else:
+            consistency = "Periodic"
+    elif len(orders) >= 2:
+        consistency = "Periodic"
+    else:
+        consistency = "Irregular"
+        
+    last_order_date = max(o.created_at for o in orders)
+    days_since_last = (datetime.utcnow() - last_order_date).days
+    if days_since_last > 90:
+        prediction = "High Churn Risk"
+    elif days_since_last <= 30:
+        prediction = "Low Churn Risk"
+    else:
+        prediction = "Medium Churn Risk"
+        
+    order_ids = [o.id for o in orders]
+    items = db.session.query(
+        Product.name,
+        func.sum(OrderItem.quantity).label('qty'),
+        func.sum(OrderItem.quantity * OrderItem.unit_price).label('spend')
+    ).join(OrderItem, Product.id == OrderItem.product_id)\
+     .filter(OrderItem.order_id.in_(order_ids))\
+     .group_by(Product.name)\
+     .order_by(db.desc('spend'))\
+     .all()
+     
+    top_products = [
+        {
+            'name': name,
+            'qty': int(qty or 0),
+            'spend': round(float(spend or 0), 2)
+        } for name, qty, spend in items
+    ]
+    
+    return jsonify({
+        'behavior_report': {
+            'order_consistency': consistency,
+            'avg_basket_value': round(avg_basket, 2),
+            'prediction': prediction
+        },
+        'top_products': top_products
+    })
+
 @analytics_bp.route('/market-basket')
-def market_basket():
+@roles_required('Admin', 'Analytics Manager')
+def market_basket(current_user):
     min_support = request.args.get('min_support', 0.02, type=float)
     min_confidence = request.args.get('min_confidence', 0.3, type=float)
     return jsonify(run_market_basket(min_support=min_support, min_confidence=min_confidence))
 
 @analytics_bp.route('/procurement-engine')
-def smart_procurement():
+@roles_required('Admin', 'Procurement Staff', 'Operations Manager')
+def smart_procurement(current_user):
     """Predictive engine for reordering."""
     items = db.session.query(Product, Inventory).join(Inventory).all()
     suggestions = []
     
     for p, inv in items:
-        # Get demand forecast for this product
         forecast = forecast_product_demand(p.id, days_ahead=30)
         daily_avg = forecast.get('total_forecasted_units', 0) / 30
         
@@ -40,23 +123,47 @@ def smart_procurement():
             stockout_days = 999
             stockout_date = None
             
-        # Decision logic
         if stockout_days < 10 or inv.quantity <= inv.reorder_point:
+            last_req = ProcurementRequest.query.filter_by(
+                product_id=p.id, status='Received'
+            ).order_by(ProcurementRequest.requested_at.desc()).first()
+            
+            pref_supplier = None
+            if last_req:
+                pref_supplier = last_req.supplier
+            else:
+                pref_supplier = Supplier.query.filter_by(is_active=True).order_by(Supplier.rating.desc()).first()
+                
+            supplier_id = pref_supplier.id if pref_supplier else None
+            supplier_name = pref_supplier.name if pref_supplier else "Unknown Supplier"
+            lead_time = pref_supplier.lead_time_days if pref_supplier else 7
+            
+            if stockout_date:
+                reorder_date = stockout_date - timedelta(days=lead_time)
+                reorder_date_str = str(reorder_date.date())
+                stockout_date_str = str(stockout_date.date())
+            else:
+                reorder_date_str = "Immediate"
+                stockout_date_str = "Critical"
+                
             suggestions.append({
                 'product_id': p.id,
                 'name': p.name,
                 'current_stock': inv.quantity,
                 'suggested_qty': inv.reorder_quantity,
                 'stockout_days': round(stockout_days, 1),
-                'stockout_date': stockout_date.isoformat() if stockout_date else "Safe",
+                'stockout_date': stockout_date_str,
+                'suggested_reorder_date': reorder_date_str,
+                'recommended_supplier_id': supplier_id,
+                'recommended_supplier_name': supplier_name,
                 'priority': 'High' if stockout_days < 5 else 'Medium'
             })
             
     return jsonify(suggestions)
 
 @analytics_bp.route('/bi-report')
-def bi_report():
-    # ABC & Safety Stock (as before)
+@roles_required('Admin', 'Analytics Manager')
+def bi_report(current_user):
     product_df_list = get_product_sales_df().to_dict(orient='records')
     abc_report = []
     if product_df_list:
@@ -75,14 +182,44 @@ def bi_report():
     })
 
 @analytics_bp.route('/notifications')
-def get_notifications():
-    role = request.args.get('role')
+@token_required
+def get_notifications(current_user):
     notifs = Notification.query.filter(
-        (Notification.recipient_role == role) | (Notification.recipient_role == None)
+        (Notification.recipient_role == current_user.role) | (Notification.recipient_role == None)
     ).order_by(Notification.created_at.desc()).limit(20).all()
     return jsonify([n.to_dict() for n in notifs])
 
+@analytics_bp.route('/notifications/clear', methods=['POST'])
+@token_required
+def clear_notifications(current_user):
+    notifs = Notification.query.filter(
+        (Notification.recipient_role == current_user.role) | (Notification.recipient_role == None)
+    ).all()
+    for n in notifs:
+        n.is_read = True
+    db.session.commit()
+    
+    # Audit log
+    log = AuditLog(
+        user_id=current_user.id, 
+        action="Cleared notifications", 
+        target_table="notifications"
+    )
+    db.session.add(log)
+    db.session.commit()
+    
+    return jsonify({'status': 'success', 'message': 'All notifications marked as read'})
+
+@analytics_bp.route('/notifications/<int:notif_id>', methods=['PATCH'])
+@token_required
+def mark_notification_read(current_user, notif_id):
+    n = Notification.query.get_or_404(notif_id)
+    n.is_read = True
+    db.session.commit()
+    return jsonify(n.to_dict())
+
 @analytics_bp.route('/audit-logs')
-def get_audit_logs():
+@roles_required('Admin')
+def get_audit_logs(current_user):
     logs = AuditLog.query.order_by(AuditLog.timestamp.desc()).limit(100).all()
     return jsonify([l.to_dict() for l in logs])

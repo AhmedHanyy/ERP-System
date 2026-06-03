@@ -1,13 +1,15 @@
 from flask import Blueprint, jsonify, request
 from app import db
-from app.models import Order, Customer, Inventory, Product
+from app.models import Order, Customer, Inventory, Product, AuditLog
 from datetime import datetime
+from .auth import token_required, roles_required
 
 orders_bp = Blueprint('orders', __name__)
 
 
 @orders_bp.route('/')
-def list_orders():
+@roles_required('Admin', 'Operations Manager', 'Customer Service')
+def list_orders(current_user):
     """Paginated orders list with search and filter."""
     page     = request.args.get('page', 1, type=int)
     per_page = request.args.get('per_page', 20, type=int)
@@ -45,14 +47,16 @@ def list_orders():
 
 
 @orders_bp.route('/<int:order_id>')
-def get_order(order_id):
+@roles_required('Admin', 'Operations Manager', 'Customer Service')
+def get_order(current_user, order_id):
     """Single order with full item detail."""
     order = Order.query.get_or_404(order_id)
     return jsonify(order.to_dict(include_items=True))
 
 
 @orders_bp.route('/<int:order_id>/status', methods=['PUT'])
-def update_status(order_id):
+@roles_required('Admin', 'Operations Manager', 'Customer Service')
+def update_status(current_user, order_id):
     """Update order status."""
     order = Order.query.get_or_404(order_id)
     data  = request.get_json()
@@ -61,14 +65,28 @@ def update_status(order_id):
     if new_status not in Order.STATUS_CHOICES:
         return jsonify({'error': f'Invalid status. Must be one of: {Order.STATUS_CHOICES}'}), 400
 
+    old_status = order.status
     order.status = new_status
     order.updated_at = datetime.utcnow()
+    
+    # Audit log
+    log = AuditLog(
+        user_id=current_user.id,
+        action=f"Updated Order {order.order_number} status",
+        target_table="orders",
+        target_id=order.id,
+        old_value=old_status,
+        new_value=new_status
+    )
+    db.session.add(log)
     db.session.commit()
+    
     return jsonify(order.to_dict())
 
 
 @orders_bp.route('/stats')
-def order_stats():
+@token_required
+def order_stats(current_user):
     """Quick order count by status."""
     from sqlalchemy import func
     results = db.session.query(Order.status, func.count(Order.id)).group_by(Order.status).all()

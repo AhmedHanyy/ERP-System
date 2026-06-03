@@ -2,7 +2,7 @@ import { TrendingUp, TrendingDown, Minus } from 'lucide-react'
 import { AreaChart, Area, ResponsiveContainer } from 'recharts'
 import clsx from 'clsx'
 
-export default function KPICard({ title, value, change, icon: Icon, color = 'brand', prefix = '', suffix = '', chartData = [] }) {
+export default function KPICard({ title, value, change, label, icon: Icon, color = 'brand', prefix = '', suffix = '', chartData = [] }) {
   const isPositive = change > 0
   const isNeutral  = change === 0
 
@@ -27,14 +27,18 @@ export default function KPICard({ title, value, change, icon: Icon, color = 'bra
       </div>
 
       <div className="flex items-end justify-between gap-4 mt-auto">
-        <div className={clsx(
-          'flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-lg',
-          isPositive ? 'text-accent-emerald bg-emerald-50' : 'text-accent-rose bg-rose-50'
-        )}>
-          {isPositive ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
-          {Math.abs(change)}%
-          <span className="text-text-muted font-normal ml-0.5">vs last month</span>
-        </div>
+        {change !== undefined ? (
+          <div className={clsx(
+            'flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-lg',
+            isPositive ? 'text-accent-emerald bg-emerald-50 dark:bg-emerald-950/20' : 'text-accent-rose bg-rose-50 dark:bg-rose-950/20'
+          )}>
+            {isPositive ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
+            {Math.abs(change)}%
+            <span className="text-text-muted font-normal ml-0.5">vs last month</span>
+          </div>
+        ) : label ? (
+          <span className="text-[10px] font-black text-text-muted uppercase tracking-widest">{label}</span>
+        ) : null}
 
         {/* Mini Sparkline */}
         <div className="h-10 w-20">

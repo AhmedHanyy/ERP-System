@@ -1,13 +1,15 @@
 from flask import Blueprint, jsonify, request
 from app import db
-from app.models import Inventory, Product, Category, InventoryLog
+from app.models import Inventory, Product, Category, InventoryLog, AuditLog
 from datetime import datetime
+from .auth import token_required, roles_required
 
 inventory_bp = Blueprint('inventory', __name__)
 
 
 @inventory_bp.route('/')
-def list_inventory():
+@roles_required('Admin', 'Operations Manager', 'Procurement Staff')
+def list_inventory(current_user):
     """Product inventory list with filters."""
     category  = request.args.get('category', '')
     status    = request.args.get('status', '')
@@ -42,7 +44,8 @@ def list_inventory():
 
 
 @inventory_bp.route('/<int:product_id>/adjust', methods=['PUT'])
-def adjust_inventory(product_id):
+@roles_required('Admin', 'Operations Manager', 'Procurement Staff')
+def adjust_inventory(current_user, product_id):
     """Manual inventory adjustment (in/out/set)."""
     inv = Inventory.query.filter_by(product_id=product_id).first_or_404()
     data = request.get_json()
@@ -69,13 +72,25 @@ def adjust_inventory(product_id):
     # Log the adjustment
     log = InventoryLog(product_id=product_id, change=change, reason=reason)
     db.session.add(log)
+    
+    # Audit log
+    log_audit = AuditLog(
+        user_id=current_user.id,
+        action=f"Adjusted inventory of {inv.product.name if inv.product else 'Product ID ' + str(product_id)}",
+        target_table="inventory",
+        target_id=inv.id,
+        old_value=str(old_qty),
+        new_value=str(inv.quantity)
+    )
+    db.session.add(log_audit)
     db.session.commit()
 
     return jsonify({'inventory': inv.to_dict(), 'log': log.to_dict()})
 
 
 @inventory_bp.route('/summary')
-def inventory_summary():
+@token_required
+def inventory_summary(current_user):
     """Quick summary stats."""
     total    = Inventory.query.count()
     low      = Inventory.query.filter(Inventory.quantity <= Inventory.reorder_point, Inventory.quantity > 0).count()

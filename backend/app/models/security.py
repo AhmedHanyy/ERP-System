@@ -8,7 +8,9 @@ class User(db.Model):
     username = db.Column(db.String(80), unique=True, nullable=False)
     email = db.Column(db.String(120), unique=True, nullable=False)
     password_hash = db.Column(db.String(128))
-    role = db.Column(db.String(50), nullable=False) # Admin, Operations Manager, Procurement Staff, Analytics Manager, Customer Service
+    role = db.Column(db.String(50), nullable=False)
+    status = db.Column(db.String(20), default='Active') # Active, Inactive
+    last_login = db.Column(db.DateTime, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     @property
@@ -28,6 +30,8 @@ class User(db.Model):
             'username': self.username,
             'email': self.email,
             'role': self.role,
+            'status': self.status,
+            'last_login': self.last_login.isoformat() if self.last_login else None,
             'created_at': self.created_at.isoformat()
         }
 
@@ -61,6 +65,7 @@ class Notification(db.Model):
     recipient_role = db.Column(db.String(50)) # If null, show to all
     title = db.Column(db.String(100), nullable=False)
     message = db.Column(db.Text, nullable=False)
+    category = db.Column(db.String(50), default='System') # Inventory, Procurement, Forecasting, Customer Analytics, System
     type = db.Column(db.String(50), default='info') # info, warning, danger, success
     is_read = db.Column(db.Boolean, default=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
@@ -70,6 +75,7 @@ class Notification(db.Model):
             'id': self.id,
             'title': self.title,
             'message': self.message,
+            'category': self.category,
             'type': self.type,
             'is_read': self.is_read,
             'created_at': self.created_at.isoformat()

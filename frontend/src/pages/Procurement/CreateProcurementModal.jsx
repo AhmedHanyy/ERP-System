@@ -9,11 +9,11 @@ export default function CreateProcurementModal({ prefill, onClose, onSuccess }) 
   const [loading,   setLoading]   = useState(true)
 
   const [formData, setFormData] = useState({
-    supplier_id: prefill?.last_supplier_id || '',
+    supplier_id: prefill?.recommended_supplier_id || prefill?.last_supplier_id || '',
     product_id:  prefill?.product_id || '',
-    quantity:    prefill?.suggested_quantity || 10,
+    quantity:    prefill?.suggested_qty || prefill?.suggested_quantity || 10,
     unit_cost:   0,
-    notes:       prefill ? `Auto-suggested based on low stock (${prefill.current_stock} remaining)` : ''
+    notes:       prefill ? `Auto-suggested based on low stock (Stockout date: ${prefill.stockout_date}, Reorder date: ${prefill.suggested_reorder_date})` : ''
   })
 
   useEffect(() => {

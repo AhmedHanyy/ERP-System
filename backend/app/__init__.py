@@ -22,6 +22,7 @@ def create_app():
     from .routes.procurement import procurement_bp
     from .routes.analytics   import analytics_bp
     from .routes.integrations import integrations_bp
+    from .routes.admin       import admin_bp
 
     app.register_blueprint(auth_bp,        url_prefix='/api/auth')
     app.register_blueprint(dashboard_bp,   url_prefix='/api/dashboard')
@@ -31,6 +32,7 @@ def create_app():
     app.register_blueprint(procurement_bp, url_prefix='/api/procurement')
     app.register_blueprint(analytics_bp,   url_prefix='/api/analytics')
     app.register_blueprint(integrations_bp,url_prefix='/api/integrations')
+    app.register_blueprint(admin_bp,       url_prefix='/api/admin')
 
     # Health check
     @app.route('/api/health')

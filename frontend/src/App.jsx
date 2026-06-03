@@ -1,5 +1,6 @@
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { AuthProvider, useAuth } from '@/context/AuthContext'
+import { ThemeProvider } from '@/context/ThemeContext'
 import Layout from '@/components/layout/Layout'
 import Dashboard  from '@/pages/Dashboard/Dashboard'
 import Orders     from '@/pages/Orders/Orders'
@@ -8,6 +9,10 @@ import Procurement from '@/pages/Procurement/Procurement'
 import Customers  from '@/pages/Customers/Customers'
 import Analytics  from '@/pages/Analytics/Analytics'
 import Login      from '@/pages/Auth/Login'
+import UserManagement from '@/pages/Admin/UserManagement'
+import AuditLogs from '@/pages/Admin/AuditLogs'
+import Settings from '@/pages/Admin/Settings'
+import NotFound from '@/pages/NotFound'
 
 const ProtectedRoute = ({ children, roles = [] }) => {
     const { user, loading } = useAuth();
@@ -25,8 +30,9 @@ const ProtectedRoute = ({ children, roles = [] }) => {
 
 export default function App() {
   return (
-    <AuthProvider>
-        <div className="min-h-screen bg-bg-primary">
+    <ThemeProvider>
+      <AuthProvider>
+        <div className="min-h-screen" style={{ backgroundColor: 'var(--bg-body)', color: 'var(--text-primary)' }}>
             <Routes>
                 <Route path="/login" element={<Login />} />
                 
@@ -37,10 +43,16 @@ export default function App() {
                     <Route path="inventory"   element={<ProtectedRoute roles={['Admin', 'Operations Manager', 'Procurement Staff']}><Inventory /></ProtectedRoute>} />
                     <Route path="procurement" element={<ProtectedRoute roles={['Admin', 'Procurement Staff']}><Procurement /></ProtectedRoute>} />
                     <Route path="customers"   element={<ProtectedRoute roles={['Admin', 'Customer Service']}><Customers /></ProtectedRoute>} />
+                    <Route path="users"       element={<ProtectedRoute roles={['Admin']}><UserManagement /></ProtectedRoute>} />
+                    <Route path="admin/logs"  element={<ProtectedRoute roles={['Admin']}><AuditLogs /></ProtectedRoute>} />
+                    <Route path="settings"    element={<ProtectedRoute roles={['Admin']}><Settings /></ProtectedRoute>} />
                     <Route path="analytics/*" element={<ProtectedRoute roles={['Admin', 'Analytics Manager']}><Analytics /></ProtectedRoute>} />
                 </Route>
+                
+                <Route path="*" element={<NotFound />} />
             </Routes>
         </div>
-    </AuthProvider>
+      </AuthProvider>
+    </ThemeProvider>
   )
 }

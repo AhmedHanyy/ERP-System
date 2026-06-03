@@ -117,20 +117,25 @@ export default function Procurement() {
             <div className="p-2 space-y-1">
               {suggestLoading ? <div className="p-4"><PageLoader /></div> :
                suggestions.length === 0 ? <p className="p-4 text-center text-xs text-text-muted">Stock levels healthy</p> :
-               suggestions.map(s => (
-                <div key={s.product_id} className="p-3 bg-bg-hover/30 hover:bg-bg-hover rounded-xl border border-transparent hover:border-brand-500/20 transition-all group">
-                   <div className="flex justify-between items-start mb-1">
-                      <p className="text-xs font-semibold text-text-primary truncate">{s.product_name}</p>
-                      <StatusBadge status={s.urgency} showDot={false} />
-                   </div>
-                   <p className="text-[10px] text-text-muted mb-3">Suggesting <span className="text-text-primary font-bold">{s.suggested_quantity}</span> units</p>
-                   <button 
-                     onClick={() => openCreateWithSuggestion(s)}
-                     className="w-full py-1.5 bg-brand-500/10 hover:bg-brand-500 hover:text-white text-brand-400 text-[10px] font-bold rounded-lg transition-all"
-                   >
-                     Process Order
-                   </button>
-                </div>
+                suggestions.map(s => (
+                 <div key={s.product_id} className="p-3 bg-bg-hover/30 hover:bg-bg-hover rounded-xl border border-transparent hover:border-brand-500/20 transition-all group">
+                    <div className="flex justify-between items-start mb-1">
+                       <p className="text-xs font-semibold text-text-primary truncate">{s.product_name || s.name}</p>
+                       <StatusBadge status={s.priority || s.urgency} showDot={false} />
+                    </div>
+                    <div className="space-y-1 my-2 text-[10px] text-text-secondary leading-normal">
+                       <p>Suggest: <span className="text-text-primary font-bold">{s.suggested_qty || s.suggested_quantity}</span> units</p>
+                       <p>Supplier: <span className="text-brand-500 font-bold">{s.recommended_supplier_name || s.last_supplier_name || 'None'}</span></p>
+                       <p>Reorder: <span className="text-amber-500 font-semibold">{s.suggested_reorder_date || 'Immediate'}</span></p>
+                       <p>Stockout: <span className="text-rose-500 font-semibold">{s.stockout_date || 'Critical'}</span></p>
+                    </div>
+                    <button 
+                      onClick={() => openCreateWithSuggestion(s)}
+                      className="w-full py-1.5 bg-brand-500/10 hover:bg-brand-500 hover:text-white text-brand-400 text-[10px] font-bold rounded-lg transition-all"
+                    >
+                      Process Order
+                    </button>
+                 </div>
               ))}
             </div>
           </div>
@@ -178,12 +183,24 @@ export default function Procurement() {
                             <td><StatusBadge status={r.status} /></td>
                             <td className="text-text-muted text-[10px]">{format(new Date(r.requested_at), 'MMM d, yy')}</td>
                             <td>
-                              <div className="flex gap-1">
+                              <div className="flex gap-1.5 flex-wrap">
+                                {r.status === 'Draft' && (
+                                  <>
+                                    <button onClick={() => handleUpdateStatus(r.id, 'Sent')} className="p-1 px-2.5 bg-blue-500/10 text-blue-400 rounded-lg text-[10px] font-bold hover:bg-blue-50 hover:text-white transition-all">Send</button>
+                                    <button onClick={() => handleUpdateStatus(r.id, 'Cancelled')} className="p-1 px-2 bg-rose-500/10 text-rose-400 rounded-lg text-[10px] font-bold hover:bg-rose-500 hover:text-white transition-all">Cancel</button>
+                                  </>
+                                )}
                                 {r.status === 'Sent' && (
-                                  <button onClick={() => handleUpdateStatus(r.id, 'Confirmed')} className="p-1 px-2 bg-brand-500/10 text-brand-400 rounded text-[10px] hover:bg-brand-500 hover:text-white transition-all">Confirm</button>
+                                  <>
+                                    <button onClick={() => handleUpdateStatus(r.id, 'Confirmed')} className="p-1 px-2.5 bg-brand-500/10 text-brand-400 rounded-lg text-[10px] font-bold hover:bg-brand-500 hover:text-white transition-all">Confirm</button>
+                                    <button onClick={() => handleUpdateStatus(r.id, 'Cancelled')} className="p-1 px-2 bg-rose-500/10 text-rose-400 rounded-lg text-[10px] font-bold hover:bg-rose-500 hover:text-white transition-all">Cancel</button>
+                                  </>
                                 )}
                                 {r.status === 'Confirmed' && (
-                                  <button onClick={() => handleUpdateStatus(r.id, 'Received')} className="p-1 px-2 bg-accent-emerald/10 text-accent-emerald rounded text-[10px] hover:bg-accent-emerald hover:text-white transition-all">Receive</button>
+                                  <>
+                                    <button onClick={() => handleUpdateStatus(r.id, 'Received')} className="p-1 px-2.5 bg-emerald-500/10 text-emerald-500 rounded-lg text-[10px] font-bold hover:bg-emerald-500 hover:text-white transition-all">Receive</button>
+                                    <button onClick={() => handleUpdateStatus(r.id, 'Cancelled')} className="p-1 px-2 bg-rose-500/10 text-rose-400 rounded-lg text-[10px] font-bold hover:bg-rose-500 hover:text-white transition-all">Cancel</button>
+                                  </>
                                 )}
                               </div>
                             </td>

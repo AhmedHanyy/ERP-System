@@ -16,15 +16,14 @@ export default {
           600: '#1D4ED8',
         },
         bg: {
-          primary: '#F8FAFC',
-          secondary: '#FFFFFF',
-          card: '#FFFFFF',
-          hover: '#F1F5F9',
+          primary: 'var(--bg-body)',
+          secondary: 'var(--bg-surface)',
+          hover: 'var(--bg-hover)',
         },
         text: {
-          primary: '#0F172A',
-          secondary: '#475569',
-          muted: '#94A3B8',
+          primary: 'var(--text-primary)',
+          secondary: 'var(--text-secondary)',
+          muted: 'var(--text-muted)',
         },
         accent: {
           sky: '#0EA5E9',
@@ -33,7 +32,7 @@ export default {
           amber: '#F59E0B',
           violet: '#8B5CF6',
         },
-        border: '#E2E8F0',
+        border: 'var(--border-main)',
       },
       borderRadius: {
         'xl': '12px',
