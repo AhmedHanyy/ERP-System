@@ -6,10 +6,21 @@ const api = axios.create({
   headers: { 'Content-Type': 'application/json' },
 })
 
+api.interceptors.request.use((config) => {
+    const token = localStorage.getItem('token');
+    if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+});
+
 api.interceptors.response.use(
   (response) => response.data,
   (error) => {
-    console.error('API Error:', error.response?.data || error.message)
+    if (error.response?.status === 401) {
+        localStorage.removeItem('token');
+        window.location.href = '/login';
+    }
     return Promise.reject(error.response?.data || error)
   }
 )
@@ -54,7 +65,7 @@ export const procurementApi = {
   listRequests:     (params) => api.get('/procurement/requests', { params }),
   createRequest:    (data) => api.post('/procurement/requests', data),
   updateStatus:     (id, status) => api.put(`/procurement/requests/${id}/status`, { status }),
-  getSuggestions:   ()     => api.get('/procurement/suggestions'),
+  getSuggestions:   ()     => api.get('/analytics/procurement-engine'),
 }
 
 // ─── Analytics ────────────────────────────────────────────────────────────────
@@ -64,7 +75,8 @@ export const analyticsApi = {
   getRFM:           ()      => api.get('/analytics/rfm'),
   getMarketBasket:  (params) => api.get('/analytics/market-basket', { params }),
   getBIReport:      ()      => api.get('/analytics/bi-report'),
-  getETLStatus:     ()      => api.get('/analytics/etl-status'),
+  getNotifications: (role)  => api.get(`/analytics/notifications?role=${role}`),
+  getAuditLogs:     ()      => api.get('/analytics/audit-logs'),
 }
 
 export default api

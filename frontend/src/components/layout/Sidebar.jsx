@@ -1,71 +1,95 @@
 import { NavLink } from 'react-router-dom'
 import {
   LayoutDashboard, Package, ShoppingBag, Users, 
-  Truck, BarChart3, Settings, BookOpen, ChevronRight, Zap
+  Truck, BarChart3, Settings, BookOpen, Zap, Activity
 } from 'lucide-react'
+import { useAuth } from '@/context/AuthContext'
 import clsx from 'clsx'
 
 const NAV_ITEMS = [
   { to: '/dashboard',   icon: LayoutDashboard, label: 'Overview' },
-  { to: '/inventory',   icon: Package,         label: 'Inventory Control' },
-  { to: '/orders',      icon: ShoppingBag,     label: 'Sales Orders' },
-  { to: '/customers',   icon: Users,           label: 'CRM' },
-  { to: '/procurement', icon: Truck,           label: 'Procurement' },
-  { to: '/analytics',   icon: BarChart3,       label: 'Business Intelligence' },
+  { to: '/inventory',   icon: Package,         label: 'Inventory Control', roles: ['Admin', 'Operations Manager', 'Procurement Staff'] },
+  { to: '/orders',      icon: ShoppingBag,     label: 'Sales Orders',      roles: ['Admin', 'Operations Manager', 'Customer Service'] },
+  { to: '/customers',   icon: Users,           label: 'CRM',               roles: ['Admin', 'Customer Service'] },
+  { to: '/procurement', icon: Truck,           label: 'Procurement',       roles: ['Admin', 'Procurement Staff'] },
+  { to: '/analytics',   icon: BarChart3,       label: 'Intelligence',      roles: ['Admin', 'Analytics Manager'] },
 ]
 
 const ADMIN_ITEMS = [
-  { to: '/settings',    icon: Settings,        label: 'System Config' },
-  { to: '/knowledge',   icon: BookOpen,        label: 'Knowledge Base' },
+  { to: '/admin/logs',  icon: Activity,        label: 'Audit Ledger',      roles: ['Admin'] },
+  { to: '/settings',    icon: Settings,        label: 'System Config',     roles: ['Admin'] },
 ]
 
 export default function Sidebar() {
+  const { user } = useAuth()
+
+  const filterItems = (items) => items.filter(item => 
+    !item.roles || item.roles.includes(user?.role) || user?.role === 'Admin'
+  )
+
   return (
-    <aside className="w-64 min-w-64 h-screen bg-white border-r border-border flex flex-col pt-6">
-      {/* Logo */}
-      <div className="px-6 mb-10">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-lg bg-brand-500 flex items-center justify-center shadow-lg shadow-brand-500/20">
-             <Zap className="w-5 h-5 text-white" />
+    <aside className="w-72 min-w-[18rem] h-screen bg-slate-900 border-r border-slate-800 flex flex-col pt-8 text-slate-300">
+      {/* Premium Logo */}
+      <div className="px-8 mb-12">
+        <div className="flex items-center gap-4">
+          <div className="w-11 h-11 rounded-2xl bg-blue-600 flex items-center justify-center shadow-2xl shadow-blue-500/20 rotate-3">
+             <Zap className="w-6 h-6 text-white" />
           </div>
-          <span className="text-xl font-bold text-text-primary tracking-tight">SmartERP</span>
+          <div>
+            <span className="text-2xl font-black text-white tracking-tighter">SmartERPi</span>
+            <div className="h-1 w-6 bg-blue-500 rounded-full mt-1"></div>
+          </div>
         </div>
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 px-3 space-y-1">
-        {NAV_ITEMS.map(({ to, icon: Icon, label }) => (
+      <nav className="flex-1 px-4 space-y-2 overflow-y-auto scrollbar-hide">
+        {filterItems(NAV_ITEMS).map(({ to, icon: Icon, label }) => (
           <NavLink key={to} to={to}>
             {({ isActive }) => (
-              <div className={clsx('sidebar-link', isActive && 'active')}>
-                <Icon className={clsx('w-4.5 h-4.5', isActive ? 'text-brand-600' : 'text-text-muted')} />
-                <span className="flex-1">{label}</span>
+              <div className={clsx(
+                'flex items-center gap-3 px-4 py-3.5 rounded-2xl text-[13px] font-bold transition-all group',
+                isActive 
+                  ? 'bg-blue-600/10 text-blue-400 border border-blue-500/20' 
+                  : 'hover:bg-white/5 hover:text-white'
+              )}>
+                <Icon className={clsx('w-5 h-5 transition-transform group-hover:scale-110', isActive ? 'text-blue-400' : 'text-slate-500')} />
+                <span className="flex-1 tracking-tight">{label}</span>
               </div>
             )}
           </NavLink>
         ))}
 
-        <div className="pt-6 pb-2 px-6">
-           <p className="text-[10px] font-bold text-text-muted uppercase tracking-[0.1em]">Administration</p>
+        <div className="pt-8 pb-3 px-8">
+           <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] border-b border-slate-800 pb-2">Administration</p>
         </div>
 
-        {ADMIN_ITEMS.map(({ to, icon: Icon, label }) => (
-           <div key={to} className="sidebar-link">
-             <Icon className="w-4.5 h-4.5 text-text-muted" />
-             <span className="flex-1">{label}</span>
-           </div>
+        {filterItems(ADMIN_ITEMS).map(({ to, icon: Icon, label }) => (
+           <NavLink key={to} to={to}>
+             {({ isActive }) => (
+                <div className={clsx(
+                    'flex items-center gap-3 px-4 py-3.5 rounded-2xl text-[13px] font-bold transition-all group',
+                    isActive ? 'text-blue-400' : 'text-slate-500 hover:text-white'
+                )}>
+                    <Icon className="w-5 h-5 transition-transform group-hover:rotate-12" />
+                    <span className="flex-1 tracking-tight">{label}</span>
+                </div>
+             )}
+           </NavLink>
         ))}
       </nav>
 
-      {/* User Info */}
-      <div className="p-4 border-t border-border mt-auto mb-2">
-         <div className="flex items-center gap-3 p-2">
-            <div className="w-10 h-10 rounded-full bg-brand-100 flex items-center justify-center text-brand-600 font-bold">
-               AH
-            </div>
-            <div className="flex-1 overflow-hidden">
-               <p className="text-sm font-bold text-text-primary truncate">Ahmed Hany</p>
-               <p className="text-[11px] text-text-muted">Admin</p>
+      {/* Enterprise Footer */}
+      <div className="p-8 mt-auto">
+         <div className="bg-slate-800/50 rounded-2xl p-4 border border-slate-800">
+            <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white font-black text-sm">
+                    {user?.username?.substring(0, 2).toUpperCase()}
+                </div>
+                <div className="flex-1 min-w-0">
+                    <p className="text-sm font-bold text-white truncate">{user?.username}</p>
+                    <p className="text-[10px] font-black text-blue-500 uppercase tracking-tighter mt-0.5">{user?.role}</p>
+                </div>
             </div>
          </div>
       </div>

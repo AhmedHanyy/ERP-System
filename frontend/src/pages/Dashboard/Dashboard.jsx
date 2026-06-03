@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
-import { ShoppingBag, DollarSign, Truck, BarChart2, Plus, Calendar } from 'lucide-react'
+import { ShoppingBag, DollarSign, Truck, BarChart2, Calendar, Target, AlertTriangle, Users } from 'lucide-react'
 import { dashboardApi } from '@/services/api'
+import { useAuth } from '@/context/AuthContext'
 import KPICard  from '@/components/shared/KPICard'
 import { PageLoader, ErrorState } from '@/components/shared/States'
 import SalesPerformanceChart from './SalesPerformanceChart'
@@ -10,6 +11,7 @@ import CustomerInsights      from './CustomerInsights'
 import ProcurementTimeline   from './ProcurementTimeline'
 
 export default function Dashboard() {
+  const { user } = useAuth()
   const [kpis,    setKpis]    = useState(null)
   const [loading, setLoading] = useState(true)
   const [error,   setError]   = useState(null)
@@ -28,84 +30,75 @@ export default function Dashboard() {
   if (loading) return <PageLoader />
   if (error)   return <ErrorState message={error} onRetry={loadKPIs} />
 
+  // Role-Based Views Logic
+  const role = user?.role || 'Admin'
+
   return (
-    <div className="space-y-6">
-      {/* Page Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 py-2">
+    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+      {/* Dynamic Header */}
+      <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-text-primary tracking-tight">Operations Overview Dashboard</h2>
-          <p className="text-sm text-text-muted">Real-time performance metrics.</p>
+          <h2 className="text-3xl font-extrabold text-slate-900 tracking-tight">{role} Performance Hub</h2>
+          <p className="text-slate-500 mt-1">Unified command center for SmartERP operations.</p>
         </div>
-        <div className="flex gap-3">
-          <button className="btn-secondary">
-            <Calendar className="w-4 h-4" /> Current Period
-          </button>
-          <button className="btn-primary">
-            <Plus className="w-4 h-4" /> Create Order
-          </button>
+        <div className="hidden md:flex items-center gap-4 bg-white p-1.5 rounded-2xl shadow-sm border border-slate-100">
+            <span className="px-4 py-2 text-sm font-semibold text-slate-600 bg-slate-50 rounded-xl flex items-center gap-2">
+                <Calendar className="w-4 h-4 text-slate-400" /> Fiscal Q3
+            </span>
         </div>
       </div>
 
-      {/* KPI Row */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6">
-        <KPICard
-          title="Total Order Volume"
-          value={kpis?.total_orders?.value || 0}
-          change={12.5}
-          icon={ShoppingBag}
-          color="brand"
-        />
-        <KPICard
-          title="Gross Revenue"
-          value={kpis?.revenue?.value || 0}
-          change={8.2}
-          prefix="EGP "
-          icon={DollarSign}
-          color="emerald"
-        />
-        <KPICard
-          title="Procurement Active"
-          value={12}
-          suffix=" Req."
-          change={-3}
-          icon={Truck}
-          color="sky"
-        />
-        <KPICard
-          title="Inventory Turnover"
-          value={4.2}
-          suffix="x"
-          change={5}
-          icon={BarChart2}
-          color="amber"
-          label="Optimal ratio"
-        />
+      {/* KPI Section - Personalized by Role */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        {role === 'Admin' && (
+            <>
+                <KPICard title="Revenue" value={kpis?.revenue?.value || 0} prefix="EGP " icon={DollarSign} color="emerald" change={8.2} />
+                <KPICard title="Orders" value={kpis?.total_orders?.value || 0} icon={ShoppingBag} color="brand" change={12} />
+                <KPICard title="Customer LTV" value={8400} prefix="EGP " icon={Users} color="sky" label="Avg. per segment" />
+                <KPICard title="Growth Target" value={92} suffix="%" icon={Target} color="amber" label="On track for Q4" />
+            </>
+        )}
+        {role === 'Procurement Staff' && (
+            <>
+                <KPICard title="Critical Reorders" value={5} icon={AlertTriangle} color="rose" label="Action required" />
+                <KPICard title="Active Requests" value={12} icon={Truck} color="brand" />
+                <KPICard title="Lead Time Avg." value={4.2} suffix=" Days" icon={Calendar} color="sky" />
+                <KPICard title="Budget Utilized" value={65} suffix="%" icon={DollarSign} color="amber" />
+            </>
+        )}
+        {(role === 'Operations Manager' || role === 'Customer Service') && (
+            <>
+                <KPICard title="Daily Orders" value={42} icon={ShoppingBag} color="emerald" change={15} />
+                <KPICard title="Fulfillment Rate" value={98.5} suffix="%" icon={Target} color="brand" />
+                <KPICard title="Active Returns" value={3} icon={AlertTriangle} color="amber" />
+                <KPICard title="Customer Rating" value={4.9} suffix="/5" icon={Target} color="sky" />
+            </>
+        )}
       </div>
 
-      {/* Charts Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-3 glass-card p-6">
-          <SalesPerformanceChart />
-        </div>
-      </div>
-
-      {/* Progress & Bottom Row */}
-      <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
-         <div className="xl:col-span-4">
-            <TopSKUProgress />
-         </div>
-      </div>
-
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-          <div className="xl:col-span-1">
+      {/* Layout Grid - Strategic vs Operational */}
+      <div className="grid grid-cols-1 xl:grid-cols-12 gap-8">
+        {/* Main Strategic Section */}
+        <div className="xl:col-span-8 space-y-8">
+          {(role === 'Admin' || role === 'Analytics Manager') && (
+            <div className="glass-card p-6 shadow-sm border-slate-100/50">
+               <SalesPerformanceChart />
+            </div>
+          )}
+          
+          <div className="glass-card p-0 overflow-hidden shadow-sm border-slate-100/50">
              <RecentOrdersTable compact />
           </div>
-          <div className="xl:col-span-1">
-             <CustomerInsights />
+        </div>
+
+        {/* Side Operational Section */}
+        <div className="xl:col-span-4 space-y-8">
+          <div className="glass-card p-6 shadow-sm border-slate-100/50">
+             <TopSKUProgress />
           </div>
-          <div className="xl:col-span-1">
-             <ProcurementTimeline />
-          </div>
+          
+          {role === 'Procurement Staff' ? <ProcurementTimeline hideFull /> : <CustomerInsights />}
+        </div>
       </div>
     </div>
   )
