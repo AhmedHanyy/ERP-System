@@ -1,0 +1,36 @@
+﻿ORDERS shape: (11488, 79)
+  [  0.1%] Notes: ┘à╪╣╪º┘è┘å┘ç ╪╣┘å╪» ╪º┘ä╪º╪│╪¬┘ä╪º┘à
+  [  0.1%] Note Attributes: from: new-customer-accounts
+  [  1.9%] Cancelled at: 2026-05-31 21:15:27 +0300
+  [ 59.8%] Payment Method: Cash on Delivery (COD)
+  [ 27.8%] Payment Reference: #LV-8226.1
+  [ 59.8%] Refunded Amount: 0.0
+  [100.0%] Vendor: Leveld
+  [ 59.8%] Outstanding Balance: 1528.0
+  [  0.0%] Employee: Leveld Hany
+  [  0.0%] Location: N/A
+  [  0.0%] Device ID: N/A
+  [ 59.8%] Id: 9394556797014.0
+  [ 48.3%] Tags: WHAPI-Meta-Billing-Issue
+  [ 59.8%] Risk Level: Low
+  [ 59.8%] Source: web
+  [100.0%] Lineitem discount: 0.0
+  [ 59.8%] Tax 1 Name: GST 14%
+  [ 59.8%] Tax 1 Value: 0.0
+  [  0.0%] Tax 2 Name: N/A
+  [  0.0%] Tax 2 Value: N/A
+  [  0.0%] Tax 3 Name: N/A
+  [  0.0%] Tax 3 Value: N/A
+  [  0.0%] Tax 4 Name: N/A
+  [  0.0%] Tax 4 Value: N/A
+  [  0.0%] Tax 5 Name: N/A
+  [  0.0%] Tax 5 Value: N/A
+  [  0.4%] Phone: 201095815338.0
+  [  0.0%] Receipt Number: N/A
+  [  0.0%] Duties: N/A
+  [ 59.8%] Billing Province Name: Cairo
+  [ 59.8%] Shipping Province Name: Cairo
+  [ 59.8%] Payment ID: rqNQiUpN6zW4ceE4yelIUTx4L
+  [ 56.7%] Payment Terms Name: Due on fulfillment
+  [ 12.6%] Next Payment Due At: 2026-06-02 09:12:00 +0300
+  [ 59.8%] Payment References: rqNQiUpN6zW4ceE4yelIUTx4L

@@ -1,41 +1,43 @@
 """
 Market Basket Analysis (Association Rules)
 ──────────────────────────────────────────
-Method: Apriori algorithm (mlxtend) on order transaction data
+Method: Apriori algorithm (mlxtend) on order transaction data.
+
+DATA STRATEGY:
+  Uses REAL orders only (IsSynthetic=False via extract_basket_data()).
+  Synthetic orders must NOT be included — they are generated independently
+  per product and would create spurious associations that don't reflect
+  real customer buying behavior.
 
 Outputs association rules with:
-  - Support    = How often items appear together
+  - Support    = How often items appear together in real orders
   - Confidence = P(B | A)
   - Lift       = How much more likely than by chance
 
 Use cases:
-  - Cross-sell recommendations ("customers who buy X also buy Y")
-  - Product placement decisions
+  - Cross-sell recommendations
   - Bundle promotions
-
-NOTE: When real dataset arrives:
-  - Tune min_support and min_confidence thresholds based on actual transaction density
-  - Consider time-windowed analysis (seasonal baskets)
+  - Product placement decisions
 """
 import pandas as pd
 from mlxtend.frequent_patterns import apriori, association_rules
 from mlxtend.preprocessing import TransactionEncoder
-from .etl import extract_sales_data
+from .etl import extract_basket_data
 
 
 def run_market_basket(min_support: float = 0.02, min_confidence: float = 0.3) -> dict:
     """
-    Run Apriori on order-level baskets.
+    Run Apriori on real order baskets (IsSynthetic=False only).
     Returns: frequent itemsets + association rules.
     """
-    df = extract_sales_data()
+    df = extract_basket_data()
 
     if df.empty:
         return {'error': 'No data', 'rules': [], 'itemsets': []}
 
-    # Build transaction baskets (one row per order, columns = products)
+    # Build transaction baskets: one row per order, columns = product names
     baskets = df.groupby(['order_id', 'product_name'])['quantity'].sum().unstack(fill_value=0)
-    baskets = baskets.applymap(lambda x: True if x > 0 else False)
+    baskets = baskets.map(lambda x: True if x > 0 else False)
 
     # Apriori
     try:
@@ -89,6 +91,7 @@ def run_market_basket(min_support: float = 0.02, min_confidence: float = 0.3) ->
             'min_confidence': min_confidence,
             'total_transactions': len(baskets),
             'rules_found': len(rules),
+            'data_source': 'Real orders only (IsSynthetic=False)',
         }
     }
 

@@ -1,0 +1,23 @@
+﻿CUSTOMERS shape: (6708, 21)
+Columns (21):
+  [100.0%] Customer ID: '7285884846166
+  [ 95.7%] First Name: Mourad
+  [ 95.5%] Last Name: Hany
+  [ 99.7%] Email: mouradhany07@gmail.com
+  [100.0%] Accepts Email Marketing: yes
+  [  0.0%] Default Address Company: Home
+  [ 93.2%] Default Address Address1: New cairo - south academy- area D - villa 314
+  [ 73.5%] Default Address Address2: Apartment 6, Second Floor
+  [ 96.1%] Default Address City: New Cairo
+  [ 94.7%] Default Address Province Code: C
+  [ 99.3%] Default Address Country Code: EG
+  [ 50.6%] Default Address Zip: 12344
+  [ 92.2%] Default Address Phone: '01558036669
+  [  0.7%] Phone: '+201023664040
+  [100.0%] Accepts SMS Marketing: no
+  [100.0%] Total Spent: 0.0
+  [100.0%] Total Orders: 0
+  [  1.5%] Note: Darabni
+  [100.0%] Tax Exempt: no
+  [  6.9%] Tags: EcomSend Popups, ES Popup Name: Opt-in popup, Fraud
+  [  0.0%] Birth date (customer.metafields.facts.birth_date): N/A

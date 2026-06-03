@@ -1,0 +1,10 @@
+﻿python :   File "<string>", line 52
+At line:1 char:1
++ python -c "
++ ~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (  File "<string>", line 52:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+    print(f'Suppliers: {len(suppliers)} | All IsReal=False: {(~suppliers[" IsReal\]).all()}')
+                                                                                            ^
+SyntaxError: f-string expression part cannot include a backslash

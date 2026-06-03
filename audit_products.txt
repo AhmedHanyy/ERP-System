@@ -1,0 +1,77 @@
+﻿PRODUCTS shape: (1377, 75)
+Columns (75):
+  [100.0%] Handle: wide-leg-linen-pants-black-copy
+  [ 19.2%] Title: Linen Wide Leg Unisex Pants - Off-White
+  [ 19.2%] Body (HTML): <p>Wide leg, full length, lightweight linen ΓÇö the kind of pi
+  [ 19.2%] Vendor: Leveld
+  [ 19.2%] Product Category: Apparel & Accessories > Clothing > Pants > Trousers
+  [ 19.0%] Type: Wide Leg Sweatpants
+  [ 15.0%] Tags: Basic, New
+  [ 19.2%] Published: True
+  [ 19.2%] Option1 Name: size
+  [ 90.6%] Option1 Value: Small / Medium
+  [ 16.2%] Option1 Linked To: product.metafields.shopify.size
+  [  0.0%] Option2 Name: N/A
+  [  0.0%] Option2 Value: N/A
+  [  0.0%] Option2 Linked To: N/A
+  [  0.0%] Option3 Name: N/A
+  [  0.0%] Option3 Value: N/A
+  [  0.0%] Option3 Linked To: N/A
+  [ 51.2%] Variant SKU: BG-SWT-BLK-S
+  [ 90.6%] Variant Grams: 0.0
+  [ 83.4%] Variant Inventory Tracker: shopify
+  [ 90.6%] Variant Inventory Qty: 3.0
+  [ 90.6%] Variant Inventory Policy: deny
+  [ 90.6%] Variant Fulfillment Service: manual
+  [ 90.6%] Variant Price: 750.0
+  [ 69.1%] Variant Compare At Price: 1349.0
+  [ 90.6%] Variant Requires Shipping: True
+  [ 90.6%] Variant Taxable: False
+  [  0.0%] Unit Price Total Measure: N/A
+  [  0.0%] Unit Price Total Measure Unit: N/A
+  [  0.0%] Unit Price Base Measure: N/A
+  [  0.0%] Unit Price Base Measure Unit: N/A
+  [ 82.7%] Variant Barcode: '11904141506934
+  [ 84.2%] Image Src: https://cdn.shopify.com/s/files/1/0609/9238/9206/files/7_4ad
+  [ 84.2%] Image Position: 1.0
+  [  7.3%] Image Alt Text: Printed Oversized T-Shirt
+  [ 19.2%] Gift Card: False
+  [  0.0%] SEO Title: N/A
+  [  0.0%] SEO Description: N/A
+  [  4.4%] Google Shopping / Google Product Category: 204.0
+  [  0.0%] Google Shopping / Gender: N/A
+  [ 14.3%] Google Shopping / Age Group: adult
+  [  0.0%] Google Shopping / MPN: N/A
+  [  0.0%] Google Shopping / Condition: N/A
+  [  0.0%] Google Shopping / Custom Product: N/A
+  [  0.0%] Google Shopping / Custom Label 0: N/A
+  [  0.0%] Google Shopping / Custom Label 1: N/A
+  [  0.0%] Google Shopping / Custom Label 2: N/A
+  [  0.0%] Google Shopping / Custom Label 3: N/A
+  [  0.0%] Google Shopping / Custom Label 4: N/A
+  [  0.0%] Google: Custom Product (product.metafields.mm-google-shopping.custom_product): N/A
+  [  0.9%] Product rating count (product.metafields.reviews.rating_count): '1
+  [  0.4%] Activewear clothing features (product.metafields.shopify.activewear-clothing-features): breathable-design; temperature-regulation; adjustable-waistb
+  [  0.4%] Activity (product.metafields.shopify.activity): universal
+  [ 14.3%] Age group (product.metafields.shopify.age-group): adults
+  [  0.0%] Bag/Case material (product.metafields.shopify.bag-case-material): N/A
+  [  2.9%] Clothing features (product.metafields.shopify.clothing-features): stretchable
+  [ 17.8%] Color (product.metafields.shopify.color-pattern): black
+  [ 13.4%] Fabric (product.metafields.shopify.fabric): linen
+  [  0.1%] Fit (product.metafields.shopify.fit): wide
+  [ 11.8%] Neckline (product.metafields.shopify.neckline): round
+  [  0.6%] Pants length type (product.metafields.shopify.pants-length-type): long
+  [ 19.2%] Size (product.metafields.shopify.size): s; m; l
+  [  9.8%] Sleeve length type (product.metafields.shopify.sleeve-length-type): short
+  [ 13.4%] Target gender (product.metafields.shopify.target-gender): female; male; unisex
+  [ 13.6%] Top length type (product.metafields.shopify.top-length-type): medium
+  [  0.6%] Waist rise (product.metafields.shopify.waist-rise): mid
+  [  0.0%] Complementary products (product.metafields.shopify--discovery--product_recommendation.complementary_products): N/A
+  [  0.0%] Related products (product.metafields.shopify--discovery--product_recommendation.related_products): N/A
+  [  0.0%] Related products settings (product.metafields.shopify--discovery--product_recommendation.related_products_display): N/A
+  [  0.0%] Search product boosts (product.metafields.shopify--discovery--product_search_boost.queries): N/A
+  [  0.0%] Variant Image: N/A
+  [ 90.6%] Variant Weight Unit: kg
+  [  0.0%] Variant Tax Code: N/A
+  [ 11.2%] Cost per item: 130.0
+  [ 19.2%] Status: active

@@ -2,27 +2,28 @@
 Demand Forecasting Module
 ─────────────────────────
 Method: Linear Regression on daily sales time series (per product).
-Academic validity: Valid for trend-based forecasting; can be upgraded to ARIMA/Prophet
-with real dataset.
+Academic validity: Valid for trend-based forecasting; can be upgraded to ARIMA/Prophet.
 
-NOTE: When real dataset arrives:
-- Retrain on historical sales by product
-- Tune forecast horizon based on actual order lead times
-- Consider Prophet (Facebook) for seasonal retail patterns
+DATA STRATEGY:
+  - Forecasting uses REAL + SYNTHETIC historical records (include_synthetic=True).
+  - Synthetic records extend the time series from ~3 months to ~3 years,
+    enabling detection of trends and seasonality.
+  - All returned forecasts are clearly labeled with the model info.
+  - Dashboards show only real data; this module is the only consumer of synthetics.
 """
 import numpy as np
 import pandas as pd
 from sklearn.linear_model import LinearRegression
-from sklearn.preprocessing import StandardScaler
-from .etl import get_daily_sales_df, preprocess_sales, extract_sales_data
+from .etl import get_daily_sales_df_with_synthetic, preprocess_sales, extract_sales_data
 
 
 def forecast_overall_revenue(days_ahead: int = 30) -> dict:
     """
     Forecast total daily revenue for next N days using linear regression.
+    Trains on real + synthetic historical data to capture long-term trends.
     Returns: historical data + forecast data for chart overlay.
     """
-    daily = get_daily_sales_df()
+    daily = get_daily_sales_df_with_synthetic()
 
     if len(daily) < 7:
         return {'historical': [], 'forecast': [], 'model': 'insufficient_data'}
@@ -82,9 +83,10 @@ def forecast_overall_revenue(days_ahead: int = 30) -> dict:
 def forecast_product_demand(product_id: int, days_ahead: int = 30) -> dict:
     """
     Forecast demand for a specific product.
+    Trains on real + synthetic data for longer horizon coverage.
     Returns daily unit demand forecast.
     """
-    df = preprocess_sales(extract_sales_data())
+    df = preprocess_sales(extract_sales_data(include_synthetic=True))
     product_df = df[df['product_id'] == product_id].copy()
 
     if len(product_df) < 5:
@@ -121,5 +123,9 @@ def forecast_product_demand(product_id: int, days_ahead: int = 30) -> dict:
             for i in range(len(future_dates))
         ],
         'total_forecasted_units': round(float(y_forecast.sum()), 0),
-        'model_info': {'type': 'Linear Regression', 'r2': round(model.score(X, y), 4)}
+        'model_info': {
+            'type': 'Linear Regression',
+            'r2': round(model.score(X, y), 4),
+            'trained_on': 'real + synthetic historical data',
+        }
     }

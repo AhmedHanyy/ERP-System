@@ -2,7 +2,10 @@ from flask import Blueprint, jsonify, request
 from app.analytics.forecasting  import forecast_overall_revenue, forecast_product_demand
 from app.analytics.segmentation import compute_rfm
 from app.analytics.association  import run_market_basket, get_product_recommendations
-from app.analytics.etl import get_daily_sales_df, get_product_sales_df
+from app.analytics.etl import (
+    get_daily_sales_df, get_product_sales_df,
+    get_discount_performance_df, get_geographic_sales_df,
+)
 from app import db
 from app.models import Order, OrderItem, Product, Inventory, Supplier, ProcurementRequest, Customer, Notification, AuditLog
 from sqlalchemy import func
@@ -229,20 +232,29 @@ def get_audit_logs(current_user):
 def etl_status(current_user):
     from app.models.warehouse import ETLRun, FactSales, DimCustomer
     latest_run = ETLRun.query.order_by(ETLRun.start_time.desc()).first()
-    
-    sales_count = 0
-    cust_count = 0
+
+    sales_count = real_count = synth_count = cust_count = fraud_count = 0
     try:
-        sales_count = FactSales.query.count()
-        cust_count = DimCustomer.query.count()
+        sales_count  = FactSales.query.count()
+        real_count   = FactSales.query.filter_by(IsSynthetic=False).count()
+        synth_count  = FactSales.query.filter_by(IsSynthetic=True).count()
+        cust_count   = DimCustomer.query.count()
+        fraud_count  = DimCustomer.query.filter_by(IsFraudRisk=True).count()
     except Exception as e:
-        print(f"Error reading counts: {e}")
-        
+        print(f'Error reading counts: {e}')
+
     return jsonify({
         'last_run': latest_run.to_dict() if latest_run else None,
         'data_counts': {
-            'orders': sales_count,
-            'customers': cust_count
+            'total_sales_rows':   sales_count,
+            'real_sales_rows':    real_count,
+            'synthetic_rows':     synth_count,
+            'customers':          cust_count,
+            'fraud_risk_customers': fraud_count,
+        },
+        'data_quality': {
+            'synthetic_pct': round(synth_count / sales_count * 100, 1) if sales_count else 0,
+            'note': 'Synthetic records are for ML training only. All dashboards use IsSynthetic=False.'
         }
     })
 
@@ -252,25 +264,39 @@ def trigger_etl(current_user):
     import threading
     from flask import current_app
     from app.models.warehouse import ETLRun
-    
-    # Check if already running
+
     active_run = ETLRun.query.filter_by(status='Running').first()
     if active_run:
-        return jsonify({
-            'status': 'error',
-            'message': 'ETL pipeline is already running.'
-        }), 400
-        
+        return jsonify({'status': 'error', 'message': 'ETL pipeline is already running.'}), 400
+
     app = current_app._get_current_object()
-    
+
     def background_etl(app_obj):
         with app_obj.app_context():
             from app.analytics.etl_pipeline import run_etl_pipeline
             run_etl_pipeline()
-            
+
     threading.Thread(target=background_etl, args=(app,)).start()
-    
-    return jsonify({
-        'status': 'success',
-        'message': 'ETL pipeline triggered in the background.'
-    })
+    return jsonify({'status': 'success', 'message': 'ETL pipeline triggered in the background.'})
+
+
+@analytics_bp.route('/discount-performance')
+@roles_required('Admin', 'Analytics Manager')
+def discount_performance(current_user):
+    """Real discount code performance (LEVELD10, FREESHIPPING, No Discount)."""
+    try:
+        df = get_discount_performance_df()
+        return jsonify(df.to_dict(orient='records'))
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@analytics_bp.route('/geographic-sales')
+@roles_required('Admin', 'Analytics Manager')
+def geographic_sales(current_user):
+    """Sales by Egyptian governorate (real orders only)."""
+    try:
+        df = get_geographic_sales_df()
+        return jsonify(df.to_dict(orient='records'))
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500

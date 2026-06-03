@@ -1,0 +1,10 @@
+﻿python :   File "<string>", line 28
+At line:1 char:13
++ cd backend; python -c "
++             ~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (  File "<string>", line 28:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+    print(f'Variants: {len(catalog)} | Real cost: {catalog[" IsCostReal\].sum()}
+          ^
+SyntaxError: unterminated string literal (detected at line 28)

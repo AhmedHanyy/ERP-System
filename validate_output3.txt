@@ -1,0 +1,10 @@
+﻿python : Traceback (most recent call last):
+At line:1 char:1
++ python validate_rebuild.py 2>&1 | Out-File -Encoding utf8 "validate_o ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (Traceback (most recent call last)::String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+  File "D:\ahmed\Year3\GP-SmartERP\SmartERP\validate_rebuild.py", line 26, in <module>
+    from app.analytics.synthetic_generator import (
+ModuleNotFoundError: No module named 'app.analytics'; 'app' is not a package

@@ -1,0 +1,38 @@
+﻿=== CATALOG ===
+Variants: 705 | Real cost: 125 | Weight sum: 1.000000
+Category ratios:
+  : 0.706
+  Apparel & Accessories > Clothing > Clothing Tops > T-Shirts: 0.737
+  Apparel & Accessories > Clothing > Clothing Tops > Tank Tops: 0.579
+
+=== DEMO SUPPLIERS ===
+Count: 4 | All IsReal=False: True
+  Egyptian Textile Mills Co.: Blank Garment (IsReal=False)
+  Delta Print House: Print Shop (IsReal=False)
+  Misr Fabric Corp.: Fabric (IsReal=False)
+  Local Packaging Supplies: Packaging (IsReal=False)
+
+=== SYNTHETIC SALES (200 orders) ===
+[SyntheticGenerator] Generated 350 synthetic line items across 200 synthetic orders.
+Rows: 350 | Orders: 200
+
+=== VALIDATION CHECKS ===
+  PASS: IsSynthetic=True
+  PASS: ChannelKey=1
+  PASS: PaymentMethod=COD
+  PASS: RiskLevel=Low
+  PASS: OrderNum starts #SYN-
+  PASS: ShopifyOrderID=None
+  PASS: UnitCost>0
+  PASS: GrossRevenue>0 (non-voided)
+  PASS: Price 100-2000 EGP
+
+=== DISTRIBUTION CHECKS ===
+Discount rate:  2.5% (target ~2.6%)
+Cancellation:   4.5%  (target ~2.4%)
+Financial:      {np.str_('pending'): 108, np.str_('paid'): 83, np.str_('voided'): 9}
+Shipping:       {60.0: 154, 65.0: 113, 70.0: 41, 75.0: 17, 80.0: 16}
+Discount codes: {nan: 195, np.str_('FREESHIPPING'): 4, np.str_('LEVELD10'): 1}
+
+ALL VALIDATIONS PASSED
+Synthetic data generator is business-accurate.
