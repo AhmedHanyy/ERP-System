@@ -1,5 +1,10 @@
 from app import db
 from datetime import datetime
+import os
+
+DATABASE_URL = os.environ.get('DATABASE_URL', '')
+IS_POSTGRES = DATABASE_URL.startswith('postgresql') or DATABASE_URL.startswith('postgres')
+SCHEMA_ARGS = {'schema': 'operational'} if IS_POSTGRES else {}
 
 
 class Category(db.Model):
@@ -7,6 +12,7 @@ class Category(db.Model):
     Product categories (hierarchical - supports parent/child).
     """
     __tablename__ = 'categories'
+    __table_args__ = SCHEMA_ARGS
     id         = db.Column(db.Integer, primary_key=True)
     name       = db.Column(db.String(100), nullable=False)
     parent_id  = db.Column(db.Integer, db.ForeignKey('categories.id'), nullable=True)
@@ -31,6 +37,7 @@ class Product(db.Model):
     Core product catalog with lifecycle informatics.
     """
     __tablename__ = 'products'
+    __table_args__ = SCHEMA_ARGS
     id          = db.Column(db.Integer, primary_key=True)
     name        = db.Column(db.String(200), nullable=False)
     sku         = db.Column(db.String(50), unique=True, nullable=False)
@@ -82,6 +89,7 @@ class ProductVariant(db.Model):
     Sub-products for size, color, or material variations.
     """
     __tablename__ = 'product_variants'
+    __table_args__ = SCHEMA_ARGS
     id         = db.Column(db.Integer, primary_key=True)
     product_id = db.Column(db.Integer, db.ForeignKey('products.id'), nullable=False)
     name       = db.Column(db.String(100), nullable=False) # e.g. "XL", "Navy Blue"

@@ -1,16 +1,18 @@
 import { Routes, Route, NavLink, Navigate, useLocation } from 'react-router-dom'
-import { Sparkles, Users, ShoppingCart, BarChart3, Database } from 'lucide-react'
+import { Sparkles, Users, ShoppingCart, BarChart3, Database, RefreshCw } from 'lucide-react'
 import Forecasting  from './Forecasting'
 import Segmentation from './Segmentation'
 import MarketBasket from './MarketBasket'
 import BIReports    from './BIReports'
 import Simulator    from './Simulator'
+import ETLVisualizer from './ETLVisualizer'
 
 const TABS = [
   { path: 'forecasting', label: 'Forecasting',   icon: Sparkles, color: 'text-accent-violet' },
   { path: 'segmentation', label: 'Segmentation', icon: Users,    color: 'text-accent-emerald' },
   { path: 'market-basket', label: 'Basket Rules', icon: ShoppingCart, color: 'text-accent-sky' },
   { path: 'bi-reports',    label: 'BI Reports',   icon: BarChart3, color: 'text-brand-400' },
+  { path: 'etl',           label: 'ETL Pipeline', icon: RefreshCw,  color: 'text-accent-sky' },
   { path: 'simulator',     label: 'Scenario Simulator', icon: Database,  color: 'text-text-muted' },
 ]
 
@@ -58,6 +60,7 @@ export default function Analytics() {
           <Route path="segmentation"  element={<Segmentation />} />
           <Route path="market-basket" element={<MarketBasket />} />
           <Route path="bi-reports"    element={<BIReports />} />
+          <Route path="etl"           element={<ETLVisualizer />} />
           <Route path="simulator"     element={<Simulator />} />
         </Routes>
       </div>

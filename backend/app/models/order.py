@@ -1,5 +1,10 @@
 from app import db
 from datetime import datetime
+import os
+
+DATABASE_URL = os.environ.get('DATABASE_URL', '')
+IS_POSTGRES = DATABASE_URL.startswith('postgresql') or DATABASE_URL.startswith('postgres')
+SCHEMA_ARGS = {'schema': 'operational'} if IS_POSTGRES else {}
 
 
 class Order(db.Model):
@@ -9,6 +14,7 @@ class Order(db.Model):
     NOTE: When real Shopify data arrives, map Shopify order fields to this schema.
     """
     __tablename__ = 'orders'
+    __table_args__ = SCHEMA_ARGS
 
     STATUS_CHOICES = ['Pending', 'Preparing', 'Shipped', 'Delivered', 'Cancelled']
 
@@ -60,6 +66,7 @@ class OrderItem(db.Model):
     NOTE: Unit price is stored at time of sale (not live product price) — important for historical accuracy.
     """
     __tablename__ = 'order_items'
+    __table_args__ = SCHEMA_ARGS
 
     id         = db.Column(db.Integer, primary_key=True)
     order_id   = db.Column(db.Integer, db.ForeignKey('orders.id'), nullable=False)

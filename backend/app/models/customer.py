@@ -1,5 +1,10 @@
 from app import db
 from datetime import datetime
+import os
+
+DATABASE_URL = os.environ.get('DATABASE_URL', '')
+IS_POSTGRES = DATABASE_URL.startswith('postgresql') or DATABASE_URL.startswith('postgres')
+SCHEMA_ARGS = {'schema': 'operational'} if IS_POSTGRES else {}
 
 
 class Customer(db.Model):
@@ -9,6 +14,7 @@ class Customer(db.Model):
     may need to be recalibrated based on actual customer data structure.
     """
     __tablename__ = 'customers'
+    __table_args__ = SCHEMA_ARGS
     id         = db.Column(db.Integer, primary_key=True)
     name       = db.Column(db.String(150), nullable=False)
     email      = db.Column(db.String(200), unique=True, nullable=False)

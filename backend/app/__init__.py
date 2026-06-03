@@ -13,6 +13,20 @@ def create_app():
     db.init_app(app)
     CORS(app, origins=Config.CORS_ORIGINS)
 
+    # Create database schemas if running on PostgreSQL
+    with app.app_context():
+        db_url = app.config.get('SQLALCHEMY_DATABASE_URI', '')
+        if db_url.startswith('postgresql') or db_url.startswith('postgres'):
+            from sqlalchemy import text
+            try:
+                with db.engine.connect() as conn:
+                    conn.execute(text("CREATE SCHEMA IF NOT EXISTS operational;"))
+                    conn.execute(text("CREATE SCHEMA IF NOT EXISTS warehouse;"))
+                    conn.commit()
+                print("PostgreSQL schemas 'operational' and 'warehouse' verified/created.")
+            except Exception as e:
+                print(f"Warning: Could not create schemas automatically: {e}")
+
     # Register blueprints
     from .routes.auth        import auth_bp
     from .routes.dashboard   import dashboard_bp

@@ -44,10 +44,19 @@ def whatsapp_notify(current_user):
 @integrations_bp.route('/shopify/sync', methods=['POST'])
 @roles_required('Admin')
 def shopify_sync(current_user):
-    """
-    TODO: Full bidirectional sync
-    """
+    import threading
+    from flask import current_app
+    from app.analytics.etl_pipeline import run_etl_pipeline
+    
+    app = current_app._get_current_object()
+    
+    def run_sync(app_obj):
+        with app_obj.app_context():
+            run_etl_pipeline()
+            
+    threading.Thread(target=run_sync, args=(app,)).start()
+    
     return jsonify({
-        'status': 'stub',
-        'message': 'Shopify full sync — pending real API credentials'
+        'status': 'success',
+        'message': 'Shopify CSV synchronization and Data Warehouse refresh started in the background.'
     })

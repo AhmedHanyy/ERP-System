@@ -16,6 +16,14 @@ class Config:
     )
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     SQLALCHEMY_ECHO = False
+    
+    # Connection pooling configurations for PostgreSQL
+    SQLALCHEMY_ENGINE_OPTIONS = {
+        'pool_size': 10,
+        'max_overflow': 20,
+        'pool_recycle': 1800,
+        'pool_pre_ping': True
+    } if (os.environ.get('DATABASE_URL', '').startswith('postgresql') or os.environ.get('DATABASE_URL', '').startswith('postgres')) else {}
 
     # ─── CORS ─────────────────────────────────────────────────────────────────
     CORS_ORIGINS = ['http://localhost:5173', 'http://127.0.0.1:5173']

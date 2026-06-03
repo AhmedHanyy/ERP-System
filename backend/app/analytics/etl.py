@@ -16,33 +16,33 @@ import sqlalchemy
 
 def extract_sales_data() -> pd.DataFrame:
     """
-    Extract: Pull raw order/item data from OLTP.
+    Extract: Pull sales data from the OLAP Warehouse schema.
     ─────────────────────────────────────────────
     OUTPUT SCHEMA (analytics contract):
       order_id, order_date, customer_id, product_id, product_name,
       category_id, quantity, unit_price, cost, revenue, profit
-    
-    NOTE: When real dataset replaces mock data, ensure these column names
-    are preserved OR update all downstream analytics functions.
     """
-    query = """
+    is_pg = db.engine.dialect.name == 'postgresql'
+    schema = 'warehouse.' if is_pg else ''
+    
+    # Use appropriate quotes based on dialect (PostgreSQL requires double quotes for mixed-case columns)
+    query = f"""
         SELECT 
-            o.id            AS order_id,
-            o.created_at    AS order_date,
-            o.customer_id,
-            o.status,
-            oi.product_id,
-            p.name          AS product_name,
-            p.category_id,
-            oi.quantity,
-            oi.unit_price,
-            p.cost,
-            (oi.quantity * oi.unit_price)        AS revenue,
-            (oi.quantity * (oi.unit_price - p.cost)) AS profit
-        FROM orders o
-        JOIN order_items oi ON o.id = oi.order_id
-        JOIN products p ON oi.product_id = p.id
-        WHERE o.status != 'Cancelled'
+            fs."OrderNumber"       AS order_id,
+            d."FullDate"           AS order_date,
+            fs."CustomerKey"       AS customer_id,
+            fs."ProductKey"        AS product_id,
+            p."Title"              AS product_name,
+            0                      AS category_id,
+            fs."Quantity"          AS quantity,
+            fs."UnitPrice"         AS unit_price,
+            fs."UnitCost"          AS cost,
+            fs."GrossRevenue"      AS revenue,
+            fs."NetProfit"         AS profit
+        FROM {schema}fact_sales fs
+        JOIN {schema}dim_product p ON fs."ProductKey" = p."ProductKey"
+        JOIN {schema}dim_date d ON fs."DateKey" = d."DateKey"
+        WHERE fs."FinancialStatus" != 'voided'
     """
     df = pd.read_sql(query, db.engine)
     df['order_date'] = pd.to_datetime(df['order_date'])
@@ -51,22 +51,24 @@ def extract_sales_data() -> pd.DataFrame:
 
 def extract_customer_data() -> pd.DataFrame:
     """
-    Extract: Customer purchase summary for RFM computation.
-    OUTPUT SCHEMA: customer_id, customer_name, email, segment,
-                   order_date, total_amount
+    Extract: Customer purchase summary from Warehouse for RFM.
     """
-    query = """
+    is_pg = db.engine.dialect.name == 'postgresql'
+    schema = 'warehouse.' if is_pg else ''
+    
+    query = f"""
         SELECT
-            c.id        AS customer_id,
-            c.name      AS customer_name,
-            c.email,
-            c.segment,
-            o.id        AS order_id,
-            o.created_at AS order_date,
-            o.total_amount
-        FROM customers c
-        JOIN orders o ON c.id = o.customer_id
-        WHERE o.status != 'Cancelled'
+            c."CustomerKey"       AS customer_id,
+            c."FirstName" || ' ' || c."LastName" AS customer_name,
+            c."Email"             AS email,
+            c."RFM_Segment"       AS segment,
+            fs."OrderNumber"      AS order_id,
+            d."FullDate"          AS order_date,
+            fs."GrossRevenue"     AS total_amount
+        FROM {schema}dim_customer c
+        JOIN {schema}fact_sales fs ON c."CustomerKey" = fs."CustomerKey"
+        JOIN {schema}dim_date d ON fs."DateKey" = d."DateKey"
+        WHERE fs."FinancialStatus" != 'voided'
     """
     df = pd.read_sql(query, db.engine)
     df['order_date'] = pd.to_datetime(df['order_date'])

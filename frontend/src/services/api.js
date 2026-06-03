@@ -77,6 +77,8 @@ export const analyticsApi = {
   getBIReport:      ()      => api.get('/analytics/bi-report'),
   getNotifications: (role)  => api.get(`/analytics/notifications?role=${role}`),
   getAuditLogs:     ()      => api.get('/analytics/audit-logs'),
+  getETLStatus:     ()      => api.get('/analytics/etl/status'),
+  triggerETLSync:   ()      => api.post('/analytics/etl/run'),
 }
 
 export default api

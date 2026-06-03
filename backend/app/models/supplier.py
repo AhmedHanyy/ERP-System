@@ -1,5 +1,10 @@
 from app import db
 from datetime import datetime
+import os
+
+DATABASE_URL = os.environ.get('DATABASE_URL', '')
+IS_POSTGRES = DATABASE_URL.startswith('postgresql') or DATABASE_URL.startswith('postgres')
+SCHEMA_ARGS = {'schema': 'operational'} if IS_POSTGRES else {}
 
 
 class Supplier(db.Model):
@@ -9,6 +14,7 @@ class Supplier(db.Model):
     via Twilio API for automated procurement notifications.
     """
     __tablename__ = 'suppliers'
+    __table_args__ = SCHEMA_ARGS
 
     id               = db.Column(db.Integer, primary_key=True)
     name             = db.Column(db.String(200), nullable=False)
@@ -54,6 +60,7 @@ class ProcurementRequest(db.Model):
     when Shopify reports low inventory webhooks.
     """
     __tablename__ = 'procurement_requests'
+    __table_args__ = SCHEMA_ARGS
 
     STATUS_CHOICES = ['Draft', 'Sent', 'Confirmed', 'Received', 'Cancelled']
 

@@ -223,3 +223,54 @@ def mark_notification_read(current_user, notif_id):
 def get_audit_logs(current_user):
     logs = AuditLog.query.order_by(AuditLog.timestamp.desc()).limit(100).all()
     return jsonify([l.to_dict() for l in logs])
+
+@analytics_bp.route('/etl/status')
+@roles_required('Admin', 'Analytics Manager')
+def etl_status(current_user):
+    from app.models.warehouse import ETLRun, FactSales, DimCustomer
+    latest_run = ETLRun.query.order_by(ETLRun.start_time.desc()).first()
+    
+    sales_count = 0
+    cust_count = 0
+    try:
+        sales_count = FactSales.query.count()
+        cust_count = DimCustomer.query.count()
+    except Exception as e:
+        print(f"Error reading counts: {e}")
+        
+    return jsonify({
+        'last_run': latest_run.to_dict() if latest_run else None,
+        'data_counts': {
+            'orders': sales_count,
+            'customers': cust_count
+        }
+    })
+
+@analytics_bp.route('/etl/run', methods=['POST'])
+@roles_required('Admin')
+def trigger_etl(current_user):
+    import threading
+    from flask import current_app
+    from app.models.warehouse import ETLRun
+    
+    # Check if already running
+    active_run = ETLRun.query.filter_by(status='Running').first()
+    if active_run:
+        return jsonify({
+            'status': 'error',
+            'message': 'ETL pipeline is already running.'
+        }), 400
+        
+    app = current_app._get_current_object()
+    
+    def background_etl(app_obj):
+        with app_obj.app_context():
+            from app.analytics.etl_pipeline import run_etl_pipeline
+            run_etl_pipeline()
+            
+    threading.Thread(target=background_etl, args=(app,)).start()
+    
+    return jsonify({
+        'status': 'success',
+        'message': 'ETL pipeline triggered in the background.'
+    })

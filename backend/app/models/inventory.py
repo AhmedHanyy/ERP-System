@@ -1,5 +1,10 @@
 from app import db
 from datetime import datetime
+import os
+
+DATABASE_URL = os.environ.get('DATABASE_URL', '')
+IS_POSTGRES = DATABASE_URL.startswith('postgresql') or DATABASE_URL.startswith('postgres')
+SCHEMA_ARGS = {'schema': 'operational'} if IS_POSTGRES else {}
 
 
 class Inventory(db.Model):
@@ -9,6 +14,7 @@ class Inventory(db.Model):
     should be calibrated to actual business rules.
     """
     __tablename__ = 'inventory'
+    __table_args__ = SCHEMA_ARGS
 
     id                 = db.Column(db.Integer, primary_key=True)
     product_id         = db.Column(db.Integer, db.ForeignKey('products.id'), unique=True, nullable=False)
@@ -56,6 +62,7 @@ class InventoryLog(db.Model):
     NOTE: This is critical for ETL — provides the adjustment history needed for accurate analytics.
     """
     __tablename__ = 'inventory_logs'
+    __table_args__ = SCHEMA_ARGS
 
     id          = db.Column(db.Integer, primary_key=True)
     product_id  = db.Column(db.Integer, db.ForeignKey('products.id'), nullable=False)

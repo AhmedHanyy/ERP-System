@@ -1,9 +1,15 @@
 from app import db
 from datetime import datetime
 from werkzeug.security import generate_password_hash, check_password_hash
+import os
+
+DATABASE_URL = os.environ.get('DATABASE_URL', '')
+IS_POSTGRES = DATABASE_URL.startswith('postgresql') or DATABASE_URL.startswith('postgres')
+SCHEMA_ARGS = {'schema': 'operational'} if IS_POSTGRES else {}
 
 class User(db.Model):
     __tablename__ = 'users'
+    __table_args__ = SCHEMA_ARGS
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
     email = db.Column(db.String(120), unique=True, nullable=False)
@@ -37,6 +43,7 @@ class User(db.Model):
 
 class AuditLog(db.Model):
     __tablename__ = 'audit_logs'
+    __table_args__ = SCHEMA_ARGS
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
     action = db.Column(db.String(200), nullable=False)
@@ -61,6 +68,7 @@ class AuditLog(db.Model):
 
 class Notification(db.Model):
     __tablename__ = 'notifications'
+    __table_args__ = SCHEMA_ARGS
     id = db.Column(db.Integer, primary_key=True)
     recipient_role = db.Column(db.String(50)) # If null, show to all
     title = db.Column(db.String(100), nullable=False)
