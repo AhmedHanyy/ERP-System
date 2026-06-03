@@ -157,7 +157,7 @@ export default function Forecasting() {
       </div>
       {/* Professional Insights Section */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 glass-card p-6 bg-gradient-to-br from-white to-brand-50/30">
+        <div className="lg:col-span-2 glass-card p-6" style={{ background: 'linear-gradient(to bottom right, var(--bg-surface), rgba(37, 99, 235, 0.05))' }}>
            <h4 className="text-sm font-bold text-text-primary mb-4 flex items-center gap-2">
               <Sparkles className="w-4 h-4 text-brand-500" /> Strategic Recommendation
            </h4>
@@ -165,19 +165,19 @@ export default function Forecasting() {
               <div className="flex gap-4">
                  <div className="w-1 bg-brand-500 rounded-full" />
                  <p className="text-xs text-text-secondary leading-relaxed">
-                    Based on the <span className="font-bold text-brand-600">Linear Regression</span> models, we project a 
+                    Based on the <span className="font-bold text-brand-600 dark:text-blue-400">Linear Regression</span> models, we project a 
                     revenue target of <span className="font-bold text-text-primary">EGP {(chartData[chartData.length-1]?.forecast || 0).toLocaleString()}</span> by the end of this horizon. 
                     The model accounts for daily seasonality and shows a baseline stability of 92%.
                  </p>
               </div>
               <div className="grid grid-cols-2 gap-4 pt-2">
-                 <div className="p-3 bg-white border border-border rounded-xl">
+                 <div className="p-3 border border-border rounded-xl" style={{ backgroundColor: 'var(--bg-hover)' }}>
                     <p className="text-[10px] font-bold text-text-muted uppercase mb-1">Risk Assessment</p>
                     <p className="text-xs font-bold text-text-primary">Low Volatility Identified</p>
                  </div>
-                 <div className="p-3 bg-white border border-border rounded-xl">
+                 <div className="p-3 border border-border rounded-xl" style={{ backgroundColor: 'var(--bg-hover)' }}>
                     <p className="text-[10px] font-bold text-text-muted uppercase mb-1">Recommended Action</p>
-                    <p className="text-xs font-bold text-brand-600">Increase Reorder Buffer 15%</p>
+                    <p className="text-xs font-bold text-brand-600 dark:text-blue-400">Increase Reorder Buffer 15%</p>
                  </div>
               </div>
            </div>

@@ -25,7 +25,7 @@ def shopify_webhook():
 
 
 @integrations_bp.route('/whatsapp/notify', methods=['POST'])
-@roles_required('Admin', 'Procurement Staff', 'Operations Manager')
+@roles_required('Admin', 'Procurement Staff', 'Procurement Officer', 'Operations Manager')
 def whatsapp_notify(current_user):
     """
     TODO: Connect real Twilio WhatsApp API

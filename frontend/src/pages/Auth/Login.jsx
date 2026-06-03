@@ -10,9 +10,16 @@ export default function Login() {
     const [error, setError] = useState(null);
     const [isLoading, setIsLoading] = useState(false);
     
-    const { login, logout } = useAuth();
+    const { user, login, logout } = useAuth();
     const navigate = useNavigate();
     const location = useLocation();
+
+    // Auto-redirect already logged-in users
+    useEffect(() => {
+        if (user) {
+            navigate('/dashboard');
+        }
+    }, [user, navigate]);
 
     // Demo Mode Logic
     useEffect(() => {
@@ -29,8 +36,7 @@ export default function Login() {
         setIsLoading(true);
         
         try {
-            await login(username, password);
-            // If remember me is checked, persistence is handled by AuthContext (LocalStorage)
+            await login(username, password, rememberMe);
             const destination = location.state?.from?.pathname || '/dashboard';
             navigate(destination);
         } catch (err) {

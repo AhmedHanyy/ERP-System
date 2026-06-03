@@ -23,11 +23,11 @@ export default function Navbar() {
     <header className="h-20 px-8 flex items-center justify-between shrink-0 z-40" style={{ backgroundColor: 'var(--bg-surface)', borderBottom: '1px solid var(--border-main)' }}>
       {/* Search Bar */}
       <div className="relative flex-1 max-w-lg hidden md:block">
-        <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+        <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" />
         <input
           type="text"
           placeholder="Global system search..."
-          className="w-full bg-slate-50 border border-slate-100 rounded-2xl pl-11 pr-4 py-2.5 text-sm focus:ring-4 focus:ring-blue-500/5 outline-none placeholder:text-slate-400 transition-all"
+          className="w-full bg-bg-body border border-border-main text-text-primary rounded-2xl pl-11 pr-4 py-2.5 text-sm focus:ring-4 focus:ring-blue-500/5 outline-none placeholder:text-text-muted transition-all"
         />
       </div>
 
@@ -57,7 +57,7 @@ export default function Navbar() {
 
             {showNotifs && (
                 <div className="absolute right-0 mt-4 w-80 rounded-2xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-main)' }}>
-                    <div className="p-4 bg-slate-50 dark:bg-slate-800 border-b border-border-main flex justify-between items-center">
+                    <div className="p-4 border-b border-border-main flex justify-between items-center" style={{ backgroundColor: 'var(--bg-hover)' }}>
                         <span className="font-bold text-text-primary">Notification Center</span>
                         <button 
                             onClick={async () => {
@@ -116,17 +116,17 @@ export default function Navbar() {
         </div>
 
         {/* User Profile */}
-        <div className="flex items-center gap-4 pl-6 border-l border-slate-100">
+        <div className="flex items-center gap-4 pl-6 border-l border-border-main">
             <div className="text-right hidden sm:block">
-                <p className="text-sm font-bold text-slate-900 leading-none">{user?.username || 'System'}</p>
-                <p className="text-[10px] uppercase tracking-tight text-blue-600 font-bold mt-1.5 flex items-center justify-end gap-1">
+                <p className="text-sm font-bold text-text-primary leading-none">{user?.username || 'System'}</p>
+                <p className="text-[10px] uppercase tracking-tight text-brand-400 font-bold mt-1.5 flex items-center justify-end gap-1">
                     <Shield className="w-2.5 h-2.5" />
                     {user?.role}
                 </p>
             </div>
             <button 
                 onClick={logout}
-                className="p-3 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-xl transition-all group"
+                className="p-3 text-text-muted hover:text-rose-500 hover:bg-rose-500/10 rounded-xl transition-all group"
             >
                 <LogOut className="w-5 h-5 group-hover:scale-110 transition-transform" />
             </button>

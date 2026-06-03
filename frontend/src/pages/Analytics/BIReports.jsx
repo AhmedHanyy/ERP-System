@@ -32,13 +32,13 @@ export default function BIReports() {
   return (
     <div className="space-y-6">
       {/* Tab Selector */}
-      <div className="flex gap-2 p-1 bg-white border border-border rounded-xl w-fit">
+      <div className="flex gap-2 p-1 border border-border rounded-xl w-fit" style={{ backgroundColor: 'var(--bg-surface)' }}>
          {['financials', 'supply-chain'].map(t => (
            <button 
              key={t}
              onClick={() => setActiveTab(t)}
              className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${
-               activeTab === t ? 'bg-brand-50 text-brand-600 shadow-sm' : 'text-text-muted hover:bg-bg-hover'
+               activeTab === t ? 'bg-brand-50 dark:bg-blue-950/40 text-brand-600 dark:text-blue-400 shadow-sm' : 'text-text-muted hover:bg-bg-hover'
              }`}
            >
              {t === 'financials' ? 'Financial Intelligence' : 'Advanced Supply Chain'}
@@ -48,13 +48,13 @@ export default function BIReports() {
 
       {activeTab === 'financials' ? (
          <div className="space-y-6 animate-fade-in">
-            {/* 1. High-Level Financial Suite */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-               <FinancialCard label="Total Revenue" value={`EGP ${fin.total_revenue?.toLocaleString()}`} trend="+12.4%" icon={DollarSign} color="text-brand-500" bg="bg-brand-50" />
-               <FinancialCard label="COGS" value={`EGP ${fin.total_cogs?.toLocaleString()}`} trend="Optimized" icon={BookOpen} color="text-rose-500" bg="bg-rose-50" />
-               <FinancialCard label="Gross Profit" value={`EGP ${fin.gross_profit?.toLocaleString()}`} trend="+8.2%" icon={TrendingUp} color="text-emerald-500" bg="bg-emerald-50" />
-               <FinancialCard label="Gross Margin" value={`${fin.gross_margin_pct}%`} trend="Stable" icon={BarChart3} color="text-accent-violet" bg="bg-accent-violet/10" />
-            </div>
+             {/* 1. High-Level Financial Suite */}
+             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <FinancialCard label="Total Revenue" value={`EGP ${fin.total_revenue?.toLocaleString()}`} trend="+12.4%" icon={DollarSign} color="text-brand-500 dark:text-blue-400" bg="bg-brand-50 dark:bg-blue-950/40" />
+                <FinancialCard label="COGS" value={`EGP ${fin.total_cogs?.toLocaleString()}`} trend="Optimized" icon={BookOpen} color="text-rose-500 dark:text-rose-400" bg="bg-rose-50 dark:bg-rose-950/40" />
+                <FinancialCard label="Gross Profit" value={`EGP ${fin.gross_profit?.toLocaleString()}`} trend="+8.2%" icon={TrendingUp} color="text-emerald-500 dark:text-emerald-400" bg="bg-emerald-50 dark:bg-emerald-950/40" />
+                <FinancialCard label="Gross Margin" value={`${fin.gross_margin_pct}%`} trend="Stable" icon={BarChart3} color="text-accent-violet dark:text-purple-400" bg="bg-accent-violet/10 dark:bg-purple-950/40" />
+             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                <div className="lg:col-span-2 glass-card p-6">
@@ -65,7 +65,7 @@ export default function BIReports() {
                            <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" vertical={false} />
                            <XAxis dataKey="month" tick={{ fill: '#94A3B8', fontSize: 10 }} axisLine={false} tickLine={false} />
                            <YAxis tick={{ fill: '#94A3B8', fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={(v) => `${v/1000}K`} />
-                           <Tooltip contentStyle={{ background: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: 12, fontSize: 12 }} />
+                           <Tooltip contentStyle={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-main)', borderRadius: 12, fontSize: 12, color: 'var(--text-primary)' }} labelStyle={{ color: 'var(--text-secondary)' }} />
                            <Area type="monotone" dataKey="revenue" fill="#6366F1" fillOpacity={0.05} stroke="none" />
                            <Bar dataKey="orders" barSize={30} fill="#818CF8" radius={[4, 4, 0, 0]} opacity={0.3} />
                            <Line type="monotone" dataKey="revenue" stroke="#6366F1" strokeWidth={3} dot={{ r: 4 }} />
@@ -102,9 +102,9 @@ export default function BIReports() {
                               <p className="text-[9px] text-text-muted">Rev: EGP {p.revenue?.toLocaleString()}</p>
                            </div>
                            <span className={`px-2 py-1 rounded-full text-[9px] font-bold ${
-                              p.abc_class.startsWith('A') ? 'bg-emerald-50 text-emerald-600' :
-                              p.abc_class.startsWith('B') ? 'bg-brand-50 text-brand-600' :
-                              'bg-rose-50 text-rose-600'
+                              p.abc_class.startsWith('A') ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400' :
+                              p.abc_class.startsWith('B') ? 'bg-brand-50 dark:bg-blue-950/40 text-brand-600 dark:text-blue-400' :
+                              'bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400'
                            }`}>
                               Class {p.abc_class}
                            </span>
@@ -129,7 +129,7 @@ export default function BIReports() {
                                  <td className="text-xs">{s.current_stock}</td>
                                  <td className="text-xs font-bold text-brand-600">{s.safety_stock}</td>
                                  <td>
-                                    <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold uppercase ${s.status === 'Healthy' ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600 animate-pulse'}`}>
+                                    <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold uppercase ${s.status === 'Healthy' ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400' : 'bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 animate-pulse'}`}>
                                        {s.status}
                                     </span>
                                  </td>

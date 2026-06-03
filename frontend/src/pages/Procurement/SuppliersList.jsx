@@ -65,7 +65,10 @@ export default function SuppliersList() {
                   </span>
                 </div>
                 <div className="min-w-0">
-                  <p className="text-sm font-semibold truncate text-text-primary">{s.name}</p>
+                  <p className="text-sm font-semibold truncate text-text-primary flex items-center gap-2">
+                    {s.name}
+                    {s.is_demo && <span className="px-1.5 py-0.5 bg-amber-500/10 text-amber-500 text-[8px] font-black rounded uppercase tracking-wider shrink-0">Demo</span>}
+                  </p>
                   <div className="flex items-center gap-2">
                     <div className="flex items-center gap-0.5">
                       <Star className="w-3 h-3 text-accent-amber fill-accent-amber" />
@@ -126,36 +129,48 @@ export default function SuppliersList() {
                   </div>
                 </div>
 
-                {/* Score breakdown grid */}
-                <div className="grid grid-cols-3 gap-4">
-                  <div className="glass-card p-4 text-center">
-                    <CheckCircle2 className="w-5 h-5 text-emerald-500 mx-auto mb-2" />
-                    <p className="text-lg font-black text-text-primary">{supplierDetails.reliability_score}%</p>
-                    <p className="text-[9px] font-black text-text-muted uppercase tracking-tight mt-0.5">Reliability</p>
+                {/* Scorecards or Demo Disclaimer */}
+                {supplierDetails.is_demo ? (
+                  <div className="p-5 bg-amber-500/5 border border-amber-500/10 text-amber-600 dark:text-amber-400 rounded-2xl text-xs font-bold leading-relaxed space-y-2">
+                    <p className="uppercase text-[9px] font-black tracking-widest text-amber-650 dark:text-amber-400">Demo / Simulated Profile</p>
+                    <p className="font-semibold text-text-secondary leading-normal">
+                      Performance scorecards and analytics ratings are disabled for this supplier profile. This is a simulated profile used for development and demonstration. Real supplier performance metrics will be calculated automatically once audited Excel supplier spreadsheets are uploaded.
+                    </p>
                   </div>
-                  <div className="glass-card p-4 text-center">
-                    <Clock className="w-5 h-5 text-blue-500 mx-auto mb-2" />
-                    <p className="text-lg font-black text-text-primary">{supplierDetails.lead_time_score}%</p>
-                    <p className="text-[9px] font-black text-text-muted uppercase tracking-tight mt-0.5">Lead Time</p>
-                  </div>
-                  <div className="glass-card p-4 text-center">
-                    <ShieldCheck className="w-5 h-5 text-purple-500 mx-auto mb-2" />
-                    <p className="text-lg font-black text-text-primary">{supplierDetails.cost_score}%</p>
-                    <p className="text-[9px] font-black text-text-muted uppercase tracking-tight mt-0.5">Cost Stability</p>
-                  </div>
-                </div>
+                ) : (
+                  <>
+                    {/* Score breakdown grid */}
+                    <div className="grid grid-cols-3 gap-4">
+                      <div className="glass-card p-4 text-center">
+                        <CheckCircle2 className="w-5 h-5 text-emerald-500 mx-auto mb-2" />
+                        <p className="text-lg font-black text-text-primary">{supplierDetails.reliability_score}%</p>
+                        <p className="text-[9px] font-black text-text-muted uppercase tracking-tight mt-0.5">Reliability</p>
+                      </div>
+                      <div className="glass-card p-4 text-center">
+                        <Clock className="w-5 h-5 text-blue-500 mx-auto mb-2" />
+                        <p className="text-lg font-black text-text-primary">{supplierDetails.lead_time_score}%</p>
+                        <p className="text-[9px] font-black text-text-muted uppercase tracking-tight mt-0.5">Lead Time</p>
+                      </div>
+                      <div className="glass-card p-4 text-center">
+                        <ShieldCheck className="w-5 h-5 text-purple-500 mx-auto mb-2" />
+                        <p className="text-lg font-black text-text-primary">{supplierDetails.cost_score}%</p>
+                        <p className="text-[9px] font-black text-text-muted uppercase tracking-tight mt-0.5">Cost Stability</p>
+                      </div>
+                    </div>
 
-                {/* Overall big card */}
-                <div className="p-4 bg-brand-500/5 border border-brand-500/10 rounded-2xl flex justify-between items-center">
-                  <div>
-                    <h4 className="text-sm font-bold text-text-primary">Weighted Scorecard Rating</h4>
-                    <p className="text-[10px] text-text-muted mt-0.5">Weighted average of reliability, lead time and costs.</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-2xl font-black text-brand-500">{supplierDetails.overall_score}%</p>
-                    <p className="text-[8px] font-black text-text-muted uppercase tracking-widest mt-0.5">Operational Score</p>
-                  </div>
-                </div>
+                    {/* Overall big card */}
+                    <div className="p-4 bg-brand-500/5 border border-brand-500/10 rounded-2xl flex justify-between items-center">
+                      <div>
+                        <h4 className="text-sm font-bold text-text-primary">Weighted Scorecard Rating</h4>
+                        <p className="text-[10px] text-text-muted mt-0.5">Weighted average of reliability, lead time and costs.</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-2xl font-black text-brand-500">{supplierDetails.overall_score}%</p>
+                        <p className="text-[8px] font-black text-text-muted uppercase tracking-widest mt-0.5">Operational Score</p>
+                      </div>
+                    </div>
+                  </>
+                )}
 
                 {/* Contact information details */}
                 <div className="space-y-3">

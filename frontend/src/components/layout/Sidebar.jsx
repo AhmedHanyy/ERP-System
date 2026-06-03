@@ -9,10 +9,10 @@ import clsx from 'clsx'
 
 const NAV_ITEMS = [
   { to: '/dashboard',   icon: LayoutDashboard, label: 'Overview' },
-  { to: '/inventory',   icon: Package,         label: 'Inventory Control', roles: ['Admin', 'Operations Manager', 'Procurement Staff'] },
+  { to: '/inventory',   icon: Package,         label: 'Inventory Control', roles: ['Admin', 'Operations Manager', 'Procurement Staff', 'Procurement Officer'] },
   { to: '/orders',      icon: ShoppingBag,     label: 'Sales Orders',      roles: ['Admin', 'Operations Manager', 'Customer Service'] },
   { to: '/customers',   icon: Users,           label: 'CRM',               roles: ['Admin', 'Customer Service'] },
-  { to: '/procurement', icon: Truck,           label: 'Procurement',       roles: ['Admin', 'Procurement Staff'] },
+  { to: '/procurement', icon: Truck,           label: 'Procurement',       roles: ['Admin', 'Procurement Staff', 'Procurement Officer'] },
   { to: '/analytics',   icon: BarChart3,       label: 'Intelligence',      roles: ['Admin', 'Analytics Manager'] },
 ]
 

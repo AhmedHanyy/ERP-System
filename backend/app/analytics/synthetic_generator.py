@@ -131,10 +131,209 @@ def _normalize_size(size_val):
         'L': 'L', 'LARGE': 'L',
         'XL': 'XL', 'X-LARGE': 'XL', 'XLARGE': 'XL',
         '2XL': '2XL', 'XXL': '2XL', '2X-LARGE': '2XL',
-        'SMALL / MEDIUM': 'S',  # unisex catch-all → map to S
+        'SMALL / MEDIUM': 'S',
+        'MEDIUM / LARGE': 'M',
+        'LARGE / XLARGE': 'L',
     }
     return map_.get(s, s)
 
+
+import re
+
+COLOR_KEYWORDS = [
+    'heather grey', 'heather gray', 'silver grey', 'silver gray', 'dark grey', 'dark gray',
+    'baby blue', 'sky blue', 'royal blue', 'dark green', 'hunter green', 'olive green',
+    'off-white', 'black', 'white', 'grey', 'gray', 'blue', 'green', 'pink', 'purple',
+    'red', 'yellow', 'brown', 'burgundy', 'navy', 'beige', 'teal', 'olive', 'orange'
+]
+
+def extract_color(title, handle, metafield_color):
+    title_lower = str(title).lower() if pd.notna(title) else ''
+    handle_lower = str(handle).lower() if pd.notna(handle) else ''
+    meta_lower = str(metafield_color).lower() if pd.notna(metafield_color) else ''
+    
+    # 1. Try title extraction (specific keywords first)
+    for color in COLOR_KEYWORDS:
+        pattern = r'\b' + re.escape(color) + r'\b'
+        if re.search(pattern, title_lower):
+            return color.title()
+            
+    # 2. Try metafield fallback
+    if meta_lower and meta_lower != 'nan' and meta_lower.strip():
+        for color in COLOR_KEYWORDS:
+            pattern = r'\b' + re.escape(color) + r'\b'
+            if re.search(pattern, meta_lower):
+                return color.title()
+        return metafield_color.title()
+        
+    # 3. Try handle extraction
+    for color in COLOR_KEYWORDS:
+        if color.replace(' ', '-') in handle_lower:
+            return color.title()
+            
+    return 'N/A'
+
+def parse_product_hierarchy(title, ptype, cat, tags):
+    title = str(title).strip()
+    ptype = str(ptype).strip()
+    cat = str(cat).strip()
+    tags = str(tags).strip().lower()
+    
+    title_lower = title.lower()
+    ptype_lower = ptype.lower()
+    cat_lower = cat.lower()
+
+    # 1. CATEGORY
+    clean_cat = "Other"
+    if "linen" in title_lower:
+        clean_cat = "Linen"
+    elif "sweatpants" in cat_lower or "sweatpants" in ptype_lower or "shorts" in cat_lower or "shorts" in ptype_lower or "pants" in title_lower:
+        clean_cat = "Bottoms"
+    elif "sweatshirt" in cat_lower or "sweatshirt" in ptype_lower or "sweatshirt" in title_lower:
+        clean_cat = "Sweatshirts"
+    elif "hoodie" in cat_lower or "hoodie" in ptype_lower or "hoodie" in title_lower:
+        clean_cat = "Hoodies"
+    elif "baby tee" in ptype_lower or "baby tee" in title_lower or "ringer" in ptype_lower or "ringer" in title_lower or "tank" in ptype_lower or "tank" in title_lower or "top" in ptype_lower or "top" in title_lower:
+        clean_cat = "Women's Tops"
+    elif "t-shirt" in cat_lower or "t-shirt" in ptype_lower or "t-shirt" in title_lower or "tee" in ptype_lower or "tee" in title_lower or "polo" in ptype_lower or "polo" in title_lower:
+        clean_cat = "T-Shirts"
+        
+    # 2. PRODUCT FAMILY
+    family = "Unknown"
+    
+    # Linen Wide Leg Unisex Pants
+    if clean_cat == "Linen":
+        family = "Linen Wide Leg Unisex Pants"
+        
+    # Hoodies
+    elif clean_cat == "Hoodies":
+        if "zip" in title_lower or "zip" in ptype_lower or "zipper" in ptype_lower:
+            family = "Zip Up Hoodie"
+        elif "cropped" in title_lower or "cropped" in ptype_lower:
+            if "printed" in ptype_lower or "printed" in tags or "graphic" in ptype_lower or any(kw in title_lower for kw in ["hokkaido", "dragon", "samurai", "shroomz", "sun", "u.f.o", "kawaii", "butterfly", "believer", "outcast", "karma", "asakusa", "tokyo", "streets", "harmony", "boss"]):
+                family = "Printed Cropped Hoodie"
+            else:
+                family = "Basic Cropped Hoodie"
+        else: # default oversized or general hoodie
+            if "printed" in ptype_lower or "printed" in tags or "graphic" in ptype_lower or any(kw in title_lower for kw in ["hokkaido", "dragon", "samurai", "shroomz", "sun", "u.f.o", "kawaii", "butterfly", "believer", "outcast", "karma", "asakusa", "tokyo", "streets", "harmony", "boss"]):
+                family = "Printed Oversized Hoodie"
+            else:
+                family = "Basic Oversized Hoodie"
+
+    # Sweatshirts
+    elif clean_cat == "Sweatshirts":
+        if "quarter" in title_lower or "quarter" in ptype_lower:
+            family = "Quarter Zip Sweatshirt"
+        elif "printed" in ptype_lower or "printed" in tags or "graphic" in ptype_lower or any(kw in title_lower for kw in ["hokkaido", "dragon", "samurai", "shroomz", "sun", "u.f.o", "kawaii", "butterfly", "believer", "outcast", "karma", "asakusa", "tokyo", "streets", "harmony", "boss"]):
+            family = "Printed Crewneck Sweatshirt"
+        else:
+            family = "Basic Crewneck Sweatshirt"
+
+    # T-Shirts
+    elif clean_cat == "T-Shirts":
+        if "polo" in ptype_lower or "polo" in title_lower:
+            family = "Polo T-Shirt"
+        elif "cropped" in ptype_lower or "cropped" in title_lower:
+            family = "Basic Cropped T-Shirt"
+        elif "oversized" in ptype_lower or "oversized" in title_lower:
+            if "printed" in ptype_lower or "printed" in tags or "graphic" in ptype_lower or any(kw in title_lower for kw in ["hokkaido", "dragon", "samurai", "shroomz", "sun", "u.f.o", "kawaii", "butterfly", "believer", "outcast", "karma", "asakusa", "tokyo", "streets", "harmony", "boss"]):
+                family = "Printed Oversized T-Shirt"
+            else:
+                family = "Basic Oversized T-Shirt"
+        else:
+            family = "Regular T-Shirt"
+
+    # Women's Tops
+    elif clean_cat == "Women's Tops":
+        # Baby Tees
+        if "baby tee" in ptype_lower or "baby tee" in title_lower or "ringer" in ptype_lower or "ringer" in title_lower:
+            if "ringer" in title_lower or "ringer" in ptype_lower:
+                family = "Ringer Baby Tee"
+            else:
+                family = "Basic Baby Tee"
+        # Tank Tops
+        elif "tank" in ptype_lower or "tank" in title_lower:
+            if "crewneck" in title_lower or "crewneck" in ptype_lower:
+                family = "Crewneck Tank Top"
+            elif "wide neck" in title_lower or "wide-neck" in title_lower:
+                family = "Wide Neck Tank Top"
+            elif "u-shaped" in title_lower or "u shaped" in title_lower:
+                family = "U-Shaped Tank Top"
+            else:
+                family = "Crewneck Tank Top"
+        # General Tops (Short/Long Sleeve, Square/Round/Wide Neck)
+        else:
+            is_long = "long sleeve" in title_lower or "long sleeve" in ptype_lower or "ls" in title_lower or "lsw" in title_lower
+            if is_long:
+                if "square" in title_lower or "squared" in title_lower:
+                    family = "Square Neck Long Sleeve Top"
+                elif "round" in title_lower:
+                    family = "Round Neck Long Sleeve Top"
+                elif "wide" in title_lower:
+                    family = "Wide Neck Long Sleeve Top"
+                else:
+                    family = "Square Neck Long Sleeve Top"
+            else:
+                if "square" in title_lower or "squared" in title_lower:
+                    family = "Square Neck Top"
+                elif "round" in title_lower:
+                    family = "Round Neck Top"
+                else:
+                    family = "Square Neck Top"
+
+    # Bottoms (Sweatpants / Shorts)
+    elif clean_cat == "Bottoms":
+        if "shorts" in ptype_lower or "shorts" in title_lower:
+            if "jogging" in title_lower or "jogging" in ptype_lower:
+                family = "Jogging Shorts"
+            else:
+                family = "Regular Shorts"
+        else: # Sweatpants
+            if "wide leg" in title_lower or "wide-leg" in title_lower:
+                family = "Wide Leg Sweatpants"
+            elif "straight leg" in title_lower or "straight-leg" in title_lower:
+                family = "Straight Leg Sweatpants"
+            else:
+                family = "Sweatpants"
+
+    else:
+        family = ptype if ptype != 'nan' else 'Other Apparel'
+        
+    # 3. FIT
+    fit = "Regular"
+    if "oversize" in title_lower or "oversized" in title_lower or "oversized" in ptype_lower:
+        fit = "Oversized"
+    elif "cropped" in title_lower or "cropped" in ptype_lower:
+        fit = "Cropped"
+    elif "baggy" in title_lower:
+        fit = "Baggy"
+    elif "wide leg" in title_lower or "wide-leg" in title_lower:
+        fit = "Wide Leg"
+    elif "relaxed" in title_lower or "relaxed fit" in title_lower:
+        fit = "Relaxed"
+    elif "ringer" in title_lower or "ringer" in ptype_lower:
+        fit = "Ringer"
+    elif "baby tee" in title_lower or "baby tee" in ptype_lower:
+        fit = "Fitted"
+    elif "regular" in title_lower or "regular" in ptype_lower:
+        fit = "Regular"
+        
+    # 4. GRAPHIC
+    graphic = "Plain"
+    is_printed = ("printed" in ptype_lower or 
+                  "printed" in tags or 
+                  "graphic" in ptype_lower or 
+                  any(kw in title_lower for kw in ["hokkaido", "dragon", "samurai", "shroomz", "sun", "u.f.o", "kawaii", "butterfly", "believer", "outcast", "karma", "asakusa", "tokyo", "streets", "harmony", "boss"]))
+    
+    if is_printed:
+        graphic = "Printed"
+        parts = re.split(r'[-–—(]', title)
+        if len(parts) > 1:
+            candidate = parts[-1].replace(')', '').strip()
+            cand_lower = candidate.lower()
+            if cand_lower not in ['basic', 'new', 'copy', 'unisex', 'regular'] and not any(color in cand_lower for color in COLOR_KEYWORDS):
+                graphic = candidate.strip().title()
+    return clean_cat, family, fit, graphic
 
 def build_product_catalog(products_df: pd.DataFrame) -> pd.DataFrame:
     """
@@ -147,36 +346,58 @@ def build_product_catalog(products_df: pd.DataFrame) -> pd.DataFrame:
     df['Cost_num']          = pd.to_numeric(df['Cost per item'], errors='coerce')
     df['Inventory_num']     = pd.to_numeric(df['Variant Inventory Qty'], errors='coerce').fillna(0)
 
-    # Forward-fill product-level fields from parent rows
+    # Forward/backward-fill product-level fields from parent rows
     product_level_cols = [
         'Title', 'Product Category', 'Type', 'Tags', 'Vendor', 'Status', 'Published',
         'Color (product.metafields.shopify.color-pattern)',
         'Fabric (product.metafields.shopify.fabric)',
         'Target gender (product.metafields.shopify.target-gender)',
         'Size (product.metafields.shopify.size)',
+        'Option1 Name', 'Option2 Name', 'Option3 Name',
     ]
-    df = df.sort_values('Handle')
     for col in product_level_cols:
         if col in df.columns:
-            df[col] = df.groupby('Handle')[col].ffill()
+            df[col] = df.groupby('Handle')[col].transform(lambda x: x.ffill().bfill())
 
     # Keep only rows with a price
     df = df[df['Variant Price_num'] > 0].copy()
 
+    # Precompute colliding SKUs (same SKU, different handles)
+    sku_handles = df.dropna(subset=['Variant SKU', 'Handle']).groupby('Variant SKU')['Handle'].nunique()
+    colliding_skus = set(sku_handles[sku_handles > 1].index)
+
     # Build canonical variant rows
     variants = []
+    processed_skus = set()
+
     for _, row in df.iterrows():
         sku = str(row.get('Variant SKU', '')).strip().replace("'", "")
         handle = str(row.get('Handle', '')).strip()
 
-        # Skip rows with no usable key
-        if not sku or sku == 'nan' or not handle:
+        # Skip rows with no handle
+        if not handle or handle == 'nan':
             continue
+
+        # If SKU is empty or has a collision, auto-generate a unique deterministic fallback SKU
+        if not sku or sku == 'nan' or sku in colliding_skus:
+            opt1 = str(row.get('Option1 Value', '')).strip().upper() if pd.notna(row.get('Option1 Value')) else ''
+            opt2 = str(row.get('Option2 Value', '')).strip().upper() if pd.notna(row.get('Option2 Value')) else ''
+            suffix = ""
+            if opt1 and opt1 != 'DEFAULT TITLE':
+                suffix += f"-{opt1}"
+            if opt2:
+                suffix += f"-{opt2}"
+            
+            if sku and sku != 'nan':
+                sku = f"{sku}-{handle.upper()}"
+            else:
+                handle_sku = handle.upper()
+                sku = f"LV-AUTO-{handle_sku}{suffix}"
 
         title      = str(row.get('Title', '')).strip() if pd.notna(row.get('Title')) else ''
         prod_type  = str(row.get('Type', '')).strip() if pd.notna(row.get('Type')) else ''
         category   = str(row.get('Product Category', '')).strip() if pd.notna(row.get('Product Category')) else ''
-        color      = str(row.get('Color (product.metafields.shopify.color-pattern)', '')).strip() if pd.notna(row.get('Color (product.metafields.shopify.color-pattern)')) else ''
+        meta_color = str(row.get('Color (product.metafields.shopify.color-pattern)', '')).strip() if pd.notna(row.get('Color (product.metafields.shopify.color-pattern)')) else ''
         fabric     = str(row.get('Fabric (product.metafields.shopify.fabric)', '')).strip() if pd.notna(row.get('Fabric (product.metafields.shopify.fabric)')) else ''
         gender     = str(row.get('Target gender (product.metafields.shopify.target-gender)', '')).strip() if pd.notna(row.get('Target gender (product.metafields.shopify.target-gender)')) else ''
         sizes_all  = str(row.get('Size (product.metafields.shopify.size)', '')).strip() if pd.notna(row.get('Size (product.metafields.shopify.size)')) else ''
@@ -184,22 +405,48 @@ def build_product_catalog(products_df: pd.DataFrame) -> pd.DataFrame:
         cost_raw   = row['Cost_num']
         price      = float(row['Variant Price_num'])
 
-        # Size from Option1 Value
+        # Size from Option1 or Option2 based on name
         opt1_name = str(row.get('Option1 Name', '')).strip().lower() if pd.notna(row.get('Option1 Name')) else ''
         opt1_val  = str(row.get('Option1 Value', '')).strip() if pd.notna(row.get('Option1 Value')) else ''
-        size_val  = opt1_val if 'size' in opt1_name else ''
+        opt2_name = str(row.get('Option2 Name', '')).strip().lower() if pd.notna(row.get('Option2 Name')) else ''
+        opt2_val  = str(row.get('Option2 Value', '')).strip() if pd.notna(row.get('Option2 Value')) else ''
+        
+        size_val = ''
+        if 'size' in opt1_name:
+            size_val = opt1_val
+        elif 'size' in opt2_name:
+            size_val = opt2_val
+            
         size_canonical = _normalize_size(size_val) if size_val else None
 
         # Barcode
         barcode = str(row.get('Variant Barcode', '')).strip().replace("'", "")
         barcode = barcode if barcode and barcode != 'nan' else None
 
+        # Normalization
+        tags_str = str(row.get('Tags', '')).strip()
+        ccat, fam, fit, graphic = parse_product_hierarchy(title, prod_type, category, tags_str)
+        color = extract_color(title, handle, meta_color)
+        variant_name = f"{color} / {size_canonical}" if size_canonical else color
+
+        # Deduplicate internal collisions (same SKU on different rows of same handle)
+        if sku in processed_skus:
+            if size_canonical:
+                sku = f"{sku}-{size_canonical}"
+            else:
+                sku = f"{sku}-{len(processed_skus)}"
+        processed_skus.add(sku)
+
         variants.append({
             'SKU': sku,
             'Handle': handle,
             'Title': title,
             'ProductType': prod_type,
-            'Category': category,
+            'Category': ccat,
+            'ProductFamily': fam,
+            'Fit': fit,
+            'Graphic': graphic,
+            'VariantName': variant_name,
             'Size': size_canonical,
             'Color': color,
             'Fabric': fabric,

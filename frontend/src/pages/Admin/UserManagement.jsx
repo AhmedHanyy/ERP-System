@@ -222,7 +222,7 @@ export default function UserManagement() {
                                 >
                                     <option value="Admin">Admin</option>
                                     <option value="Operations Manager">Operations Manager</option>
-                                    <option value="Procurement Staff">Procurement Staff</option>
+                                    <option value="Procurement Officer">Procurement Officer</option>
                                     <option value="Analytics Manager">Analytics Manager</option>
                                     <option value="Customer Service">Customer Service</option>
                                 </select>
@@ -277,7 +277,7 @@ export default function UserManagement() {
                                 >
                                     <option value="Admin">Admin</option>
                                     <option value="Operations Manager">Operations Manager</option>
-                                    <option value="Procurement Staff">Procurement Staff</option>
+                                    <option value="Procurement Officer">Procurement Officer</option>
                                     <option value="Analytics Manager">Analytics Manager</option>
                                     <option value="Customer Service">Customer Service</option>
                                 </select>

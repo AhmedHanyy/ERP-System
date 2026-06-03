@@ -39,7 +39,7 @@ export default function CustomerDetailModal({ customerId, onClose }) {
         onClick={e => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="p-6 border-b border-border flex items-center justify-between bg-white">
+        <div className="p-6 border-b border-border flex items-center justify-between" style={{ backgroundColor: 'var(--bg-surface)' }}>
           <div className="flex items-center gap-3">
              <Target className="w-5 h-5 text-brand-500" />
              <h2 className="text-lg font-bold text-text-primary">Informatics Customer Profile</h2>
@@ -78,10 +78,10 @@ export default function CustomerDetailModal({ customerId, onClose }) {
                   </div>
                </div>
 
-               <div className="w-full md:w-64 space-y-3">
-                  <div className="glass-card p-4 bg-brand-50/50 border-brand-100">
-                     <p className="text-[9px] font-bold text-brand-600 uppercase">Lifetime Rev</p>
-                     <p className="text-xl font-black text-brand-600">EGP {customer.lifetime_value?.toLocaleString()}</p>
+                <div className="w-full md:w-64 space-y-3">
+                  <div className="glass-card p-4 bg-brand-50/50 dark:bg-blue-950/20 border-brand-100 dark:border-blue-900/30">
+                     <p className="text-[9px] font-bold text-brand-600 dark:text-blue-400 uppercase">Lifetime Rev</p>
+                     <p className="text-xl font-black text-brand-600 dark:text-blue-400">EGP {customer.lifetime_value?.toLocaleString()}</p>
                   </div>
                </div>
             </div>
@@ -95,24 +95,24 @@ export default function CustomerDetailModal({ customerId, onClose }) {
                     value={insights?.behavior_report?.order_consistency || 'Analyzing...'} 
                     desc="Historical regularity index"
                     icon={TrendingUp}
-                    color="text-brand-500"
-                    bg="bg-brand-50"
+                    color="text-brand-500 dark:text-blue-400"
+                    bg="bg-brand-50 dark:bg-blue-950/40"
                   />
                   <InsightCard 
                     title="Average Basket" 
                     value={`EGP ${insights?.behavior_report?.avg_basket_value?.toLocaleString() || 0}`} 
                     desc="Mean Transaction Value"
                     icon={ShoppingBag}
-                    color="text-emerald-500"
-                    bg="bg-emerald-50"
+                    color="text-emerald-500 dark:text-emerald-400"
+                    bg="bg-emerald-50 dark:bg-emerald-950/40"
                   />
                   <InsightCard 
                     title="AI Prediction" 
                     value={insights?.behavior_report?.prediction || 'Pending...'} 
                     desc="Projected Brand Loyalty"
                     icon={Target}
-                    color="text-accent-violet"
-                    bg="bg-accent-violet/10"
+                    color="text-accent-violet dark:text-purple-400"
+                    bg="bg-accent-violet/10 dark:bg-purple-950/40"
                   />
                </div>
             </div>
@@ -138,8 +138,8 @@ export default function CustomerDetailModal({ customerId, onClose }) {
                <div className="space-y-4">
                   <h4 className="text-xs font-bold text-text-muted uppercase tracking-widest">Transaction Ledger</h4>
                   <div className="space-y-3 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
-                     {(customer.orders || []).map(order => (
-                       <div key={order.id} className="p-4 bg-white rounded-2xl border border-border flex items-center justify-between shadow-sm hover:shadow-md transition-all">
+                      {(customer.orders || []).map(order => (
+                       <div key={order.id} className="p-4 rounded-2xl border border-border flex items-center justify-between shadow-sm hover:shadow-md transition-all" style={{ backgroundColor: 'var(--bg-surface)' }}>
                           <div>
                              <p className="text-sm font-black text-brand-500">{order.order_number}</p>
                              <p className="text-[10px] text-text-muted">{format(new Date(order.created_at), 'MMM d, yyyy')}</p>
@@ -162,7 +162,7 @@ export default function CustomerDetailModal({ customerId, onClose }) {
 
 function InsightCard({ title, value, desc, icon: Icon, color, bg }) {
   return (
-    <div className="glass-card p-6 bg-white shadow-sm border-border/50">
+    <div className="glass-card p-6 shadow-sm border-border/50">
        <div className="flex items-center gap-3 mb-4">
           <div className={`p-2 rounded-xl ${bg} ${color}`}>
              <Icon className="w-5 h-5" />

@@ -8,9 +8,18 @@ procurement_bp = Blueprint('procurement', __name__)
 
 
 def compute_supplier_performance(s):
-    # Query received orders for this supplier
-    received = ProcurementRequest.query.filter_by(supplier_id=s.id, status='Received').all()
-    cancelled = ProcurementRequest.query.filter_by(supplier_id=s.id, status='Cancelled').all()
+    if not s.is_real:
+        return {
+            'lead_time_score': None,
+            'reliability_score': None,
+            'cost_score': None,
+            'overall_score': 0.0,
+            'is_demo': True
+        }
+        
+    # Query received orders for this supplier (real only)
+    received = ProcurementRequest.query.filter_by(supplier_id=s.id, status='Received', is_real=True).all()
+    cancelled = ProcurementRequest.query.filter_by(supplier_id=s.id, status='Cancelled', is_real=True).all()
     
     # 1. Lead Time Score
     if received:
@@ -29,17 +38,17 @@ def compute_supplier_performance(s):
         else:
             lead_time_score = 100.0
     else:
-        lead_time_score = 80.0 + (s.rating * 4.0)
+        lead_time_score = 100.0
         
     # 2. Reliability Score: % of non-cancelled out of closed orders
     total_closed = len(received) + len(cancelled)
     if total_closed > 0:
         reliability_score = (len(received) / total_closed) * 100.0
     else:
-        reliability_score = 85.0 + (s.rating * 3.0)
+        reliability_score = 100.0
         
-    # 3. Cost Score: rating based
-    cost_score = 75.0 + (s.rating * 5.0)
+    # 3. Cost Score
+    cost_score = 100.0
     
     # 4. Overall Supplier Score
     overall_score = 0.4 * reliability_score + 0.3 * lead_time_score + 0.3 * cost_score
@@ -48,14 +57,15 @@ def compute_supplier_performance(s):
         'lead_time_score': round(lead_time_score, 1),
         'reliability_score': round(reliability_score, 1),
         'cost_score': round(cost_score, 1),
-        'overall_score': round(overall_score, 1)
+        'overall_score': round(overall_score, 1),
+        'is_demo': False
     }
 
 
 # ─── Suppliers ────────────────────────────────────────────────────────────────
 
 @procurement_bp.route('/suppliers')
-@roles_required('Admin', 'Procurement Staff', 'Operations Manager')
+@roles_required('Admin', 'Procurement Staff', 'Procurement Officer', 'Operations Manager')
 def list_suppliers(current_user):
     suppliers = Supplier.query.filter_by(is_active=True).all()
     res = []
@@ -72,7 +82,7 @@ def list_suppliers(current_user):
 
 
 @procurement_bp.route('/suppliers/<int:supplier_id>')
-@roles_required('Admin', 'Procurement Staff', 'Operations Manager')
+@roles_required('Admin', 'Procurement Staff', 'Procurement Officer', 'Operations Manager')
 def get_supplier(current_user, supplier_id):
     s = Supplier.query.get_or_404(supplier_id)
     data = s.to_dict()
@@ -99,7 +109,7 @@ def get_supplier(current_user, supplier_id):
 # ─── Procurement Requests ─────────────────────────────────────────────────────
 
 @procurement_bp.route('/requests')
-@roles_required('Admin', 'Procurement Staff', 'Operations Manager')
+@roles_required('Admin', 'Procurement Staff', 'Procurement Officer', 'Operations Manager')
 def list_requests(current_user):
     status = request.args.get('status', '')
     query  = ProcurementRequest.query
@@ -110,7 +120,7 @@ def list_requests(current_user):
 
 
 @procurement_bp.route('/requests', methods=['POST'])
-@roles_required('Admin', 'Procurement Staff')
+@roles_required('Admin', 'Procurement Staff', 'Procurement Officer')
 def create_request(current_user):
     data = request.get_json()
     pr = ProcurementRequest(
@@ -140,7 +150,7 @@ def create_request(current_user):
 
 
 @procurement_bp.route('/requests/<int:req_id>/status', methods=['PUT'])
-@roles_required('Admin', 'Procurement Staff')
+@roles_required('Admin', 'Procurement Staff', 'Procurement Officer')
 def update_request_status(current_user, req_id):
     pr   = ProcurementRequest.query.get_or_404(req_id)
     data = request.get_json()
@@ -193,7 +203,7 @@ def update_request_status(current_user, req_id):
 # ─── Auto Reorder Suggestions (Analytics-driven) ─────────────────────────────
 
 @procurement_bp.route('/suggestions')
-@roles_required('Admin', 'Procurement Staff', 'Operations Manager')
+@roles_required('Admin', 'Procurement Staff', 'Procurement Officer', 'Operations Manager')
 def get_reorder_suggestions(current_user):
     """
     Products below reorder point → suggest procurement.

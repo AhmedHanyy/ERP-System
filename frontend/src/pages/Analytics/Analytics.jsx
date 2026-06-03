@@ -33,7 +33,7 @@ export default function Analytics() {
         </div>
 
         {/* Tab Navigation */}
-        <div className="mt-8 flex gap-1 p-1 bg-white border border-border rounded-xl shadow-sm w-fit">
+        <div className="mt-8 flex gap-1 p-1 border border-border rounded-xl shadow-sm w-fit" style={{ backgroundColor: 'var(--bg-surface)' }}>
           {TABS.map(tab => (
             <NavLink
               key={tab.path}
@@ -41,7 +41,7 @@ export default function Analytics() {
               className={({ isActive }) => `
                 flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition-all duration-200
                 ${isActive 
-                  ? 'bg-brand-50 text-brand-600 shadow-sm border border-brand-100' 
+                  ? 'bg-brand-50 dark:bg-blue-950/40 text-brand-600 dark:text-blue-400 shadow-sm border border-brand-100 dark:border-blue-900/30' 
                   : 'text-text-muted hover:text-text-secondary hover:bg-bg-hover'
                 }
               `}

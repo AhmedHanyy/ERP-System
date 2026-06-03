@@ -288,6 +288,10 @@ def run_etl_pipeline():
                 'Title':          variant['Title'],
                 'Category':       variant['Category'],
                 'ProductType':    variant['ProductType'],
+                'ProductFamily':  variant.get('ProductFamily'),
+                'Fit':            variant.get('Fit'),
+                'Graphic':        variant.get('Graphic'),
+                'VariantName':    variant.get('VariantName'),
                 'Size':           variant['Size'],
                 'Color':          variant['Color'],
                 'Fabric':         variant['Fabric'],
@@ -363,7 +367,7 @@ def run_etl_pipeline():
                 name=tname, con=db.engine, schema=SCHEMA_NAME,
                 if_exists='append', index=False
             )
-            print(f'  Loaded {len(tdf):,} rows → {SCHEMA_PREFIX}{tname}')
+            print(f'  Loaded {len(tdf):,} rows -> {SCHEMA_PREFIX}{tname}')
 
         # Build customer email → CustomerKey map
         db_custs          = db.session.query(DimCustomer).all()
@@ -372,7 +376,7 @@ def run_etl_pipeline():
         default_cust_key  = customer_keys[0] if customer_keys else 1
 
         # ── TRANSFORM REAL SHOPIFY ORDERS → FACT SALES ───────────────────────
-        print('\n[7/8] Transforming real Shopify orders → FactSales...')
+        print('\n[7/8] Transforming real Shopify orders -> FactSales...')
 
         def resolve_product_key(sku_clean: str, item_name: str) -> int:
             """SKU → Title → base-title fallback for product resolution."""
@@ -561,7 +565,7 @@ def run_etl_pipeline():
                 name=tname, con=db.engine, schema=SCHEMA_NAME,
                 if_exists='append', index=False
             )
-            print(f'  Loaded {len(tdf):,} rows → {SCHEMA_PREFIX}{tname}')
+            print(f'  Loaded {len(tdf):,} rows -> {SCHEMA_PREFIX}{tname}')
 
         # Clear FactReturns (no real return data)
         with db.engine.connect() as conn:
@@ -578,7 +582,7 @@ def run_etl_pipeline():
         db.session.commit()
 
         duration = (etl_run.end_time - start_time).total_seconds()
-        print(f'\n✓ ETL Pipeline Completed in {duration:.1f}s')
+        print(f'\n[OK] ETL Pipeline Completed in {duration:.1f}s')
         print(f'  Real records:      {len(real_sales_df):,}')
         print(f'  Synthetic records: {len(synth_sales_df):,}')
         print(f'  Total in warehouse: {len(combined_sales_df):,}')
@@ -587,7 +591,7 @@ def run_etl_pipeline():
     except Exception as exc:
         import traceback
         err_msg = traceback.format_exc()
-        print(f'\n✗ ETL Pipeline Failed: {exc}')
+        print(f'\n[ERROR] ETL Pipeline Failed: {exc}')
         etl_run.end_time = datetime.utcnow()
         etl_run.status   = 'Failed'
         etl_run.errors   = err_msg

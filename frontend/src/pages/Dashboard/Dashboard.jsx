@@ -128,7 +128,7 @@ function renderRoleKPIs(role, kpis) {
             <KPICard title="Growth Velocity" value={kpis?.revenue?.change || 0} suffix="%" icon={Target} color="amber" label="MoM Growth Rate" />
         </>
     )
-    if (role === 'Procurement Staff') return (
+    if (role === 'Procurement Staff' || role === 'Procurement Officer') return (
         <>
             <KPICard title="Stock Depletion" value={kpis?.low_stock_alerts?.value || 0} icon={AlertTriangle} color="rose" label="CRITICAL REORDERS" />
             <KPICard title="Transit Assets" value={kpis?.transit_assets?.count || 0} icon={Truck} color="brand" label={`Value: EGP ${kpis?.transit_assets?.value?.toLocaleString() || 0}`} />
@@ -156,7 +156,8 @@ function renderRoleKPIs(role, kpis) {
 
 function renderSidePanel(role, rfm) {
     switch(role) {
-        case 'Procurement Staff': return <ProcurementTimeline hideFull />;
+        case 'Procurement Staff':
+        case 'Procurement Officer': return <ProcurementTimeline hideFull />;
         case 'Customer Service': return <CustomerInsights />;
         case 'Analytics Manager': return <SegmentationWidget data={rfm} />;
         default: return <CustomerInsights />;

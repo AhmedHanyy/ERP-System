@@ -109,7 +109,7 @@ def market_basket(current_user):
     return jsonify(run_market_basket(min_support=min_support, min_confidence=min_confidence))
 
 @analytics_bp.route('/procurement-engine')
-@roles_required('Admin', 'Procurement Staff', 'Operations Manager')
+@roles_required('Admin', 'Procurement Staff', 'Procurement Officer', 'Operations Manager')
 def smart_procurement(current_user):
     """Predictive engine for reordering."""
     items = db.session.query(Product, Inventory).join(Inventory).all()

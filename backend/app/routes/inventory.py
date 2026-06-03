@@ -8,7 +8,7 @@ inventory_bp = Blueprint('inventory', __name__)
 
 
 @inventory_bp.route('/')
-@roles_required('Admin', 'Operations Manager', 'Procurement Staff')
+@roles_required('Admin', 'Operations Manager', 'Procurement Staff', 'Procurement Officer')
 def list_inventory(current_user):
     """Product inventory list with filters."""
     category  = request.args.get('category', '')
@@ -44,7 +44,7 @@ def list_inventory(current_user):
 
 
 @inventory_bp.route('/<int:product_id>/adjust', methods=['PUT'])
-@roles_required('Admin', 'Operations Manager', 'Procurement Staff')
+@roles_required('Admin', 'Operations Manager', 'Procurement Staff', 'Procurement Officer')
 def adjust_inventory(current_user, product_id):
     """Manual inventory adjustment (in/out/set)."""
     inv = Inventory.query.filter_by(product_id=product_id).first_or_404()

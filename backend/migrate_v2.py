@@ -13,7 +13,7 @@ def migrate():
         users_data = [
             ('admin', 'admin@smarterp.ai', 'Admin', 'admin'),
             ('ops', 'ops@smarterp.ai', 'Operations Manager', 'ops'),
-            ('proc', 'proc@smarterp.ai', 'Procurement Staff', 'proc'),
+            ('proc', 'proc@smarterp.ai', 'Procurement Officer', 'proc'),
             ('analytics', 'analytics@smarterp.ai', 'Analytics Manager', 'analytics'),
             ('cs', 'cs@smarterp.ai', 'Customer Service', 'cs'),
         ]

@@ -40,8 +40,8 @@ export default function App() {
                     <Route index element={<Navigate to="/dashboard" replace />} />
                     <Route path="dashboard"   element={<Dashboard />} />
                     <Route path="orders"      element={<ProtectedRoute roles={['Admin', 'Operations Manager', 'Customer Service']}><Orders /></ProtectedRoute>} />
-                    <Route path="inventory"   element={<ProtectedRoute roles={['Admin', 'Operations Manager', 'Procurement Staff']}><Inventory /></ProtectedRoute>} />
-                    <Route path="procurement" element={<ProtectedRoute roles={['Admin', 'Procurement Staff']}><Procurement /></ProtectedRoute>} />
+                    <Route path="inventory"   element={<ProtectedRoute roles={['Admin', 'Operations Manager', 'Procurement Staff', 'Procurement Officer']}><Inventory /></ProtectedRoute>} />
+                    <Route path="procurement" element={<ProtectedRoute roles={['Admin', 'Procurement Staff', 'Procurement Officer']}><Procurement /></ProtectedRoute>} />
                     <Route path="customers"   element={<ProtectedRoute roles={['Admin', 'Customer Service']}><Customers /></ProtectedRoute>} />
                     <Route path="users"       element={<ProtectedRoute roles={['Admin']}><UserManagement /></ProtectedRoute>} />
                     <Route path="admin/logs"  element={<ProtectedRoute roles={['Admin']}><AuditLogs /></ProtectedRoute>} />

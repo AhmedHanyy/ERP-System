@@ -38,7 +38,14 @@ def roles_required(*roles):
         @wraps(f)
         @token_required
         def decorated(current_user, *args, **kwargs):
-            if current_user.role not in roles and current_user.role != 'Admin':
+            user_role = current_user.role
+            allowed_roles = list(roles)
+            if 'Procurement Officer' in allowed_roles and 'Procurement Staff' not in allowed_roles:
+                allowed_roles.append('Procurement Staff')
+            if 'Procurement Staff' in allowed_roles and 'Procurement Officer' not in allowed_roles:
+                allowed_roles.append('Procurement Officer')
+                
+            if user_role not in allowed_roles and user_role != 'Admin':
                 return jsonify({'message': 'Insufficient permissions!'}), 403
             return f(current_user, *args, **kwargs)
         return decorated

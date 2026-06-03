@@ -88,6 +88,10 @@ class DimProduct(db.Model):
     SizesOffered    = db.Column(db.String(200), nullable=True)               # "s; m; l; xl; 2xl"
     Barcode         = db.Column(db.String(50), nullable=True)                # EAN barcode
 
+    ProductFamily   = db.Column(db.String(150), nullable=True)               # Clean product family name
+    Fit             = db.Column(db.String(50), nullable=True)                # Parsed fit (Oversized, Cropped, etc.)
+    Graphic         = db.Column(db.String(100), nullable=True)               # Parsed graphic/design (or Plain)
+    VariantName     = db.Column(db.String(150), nullable=True)               # Color / Size combination
     Price           = db.Column(db.Float, nullable=False)
     CompareAtPrice  = db.Column(db.Float, nullable=True)                     # Original price before markdown
     Cost            = db.Column(db.Float, nullable=False)
@@ -110,6 +114,10 @@ class DimProduct(db.Model):
             'Title': self.Title,
             'Category': self.Category,
             'ProductType': self.ProductType,
+            'ProductFamily': self.ProductFamily,
+            'Fit': self.Fit,
+            'Graphic': self.Graphic,
+            'VariantName': self.VariantName,
             'Size': self.Size,
             'Color': self.Color,
             'Fabric': self.Fabric,
