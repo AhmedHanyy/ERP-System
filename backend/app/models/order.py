@@ -33,11 +33,20 @@ class Order(db.Model):
     items        = db.relationship('OrderItem', back_populates='order', cascade='all, delete-orphan')
 
     @property
+    def subtotal(self):
+        """Sum of (unit_price × quantity) for all line items."""
+        return round(sum(item.unit_price * item.quantity for item in self.items), 2)
+
+    @property
     def profit(self):
-        return sum(
-            (item.unit_price - (item.product.cost or 0)) * item.quantity
+        """Revenue minus COGS. COGS = product.cost × quantity per item.
+        Profit can never exceed revenue and cannot make revenue negative."""
+        revenue = self.total_amount or 0.0
+        cogs = sum(
+            (item.product.cost or 0) * item.quantity
             for item in self.items if item.product
         )
+        return round(revenue - cogs, 2)
 
     def to_dict(self, include_items=False):
         d = {
@@ -48,9 +57,10 @@ class Order(db.Model):
             'customer_email': self.customer.email if self.customer else None,
             'status': self.status,
             'total_amount': round(self.total_amount, 2),
-            'discount': self.discount,
-            'shipping_fee': self.shipping_fee,
-            'profit': round(self.profit, 2),
+            'subtotal': self.subtotal,
+            'discount': round(self.discount or 0.0, 2),
+            'shipping_fee': round(self.shipping_fee or 0.0, 2),
+            'profit': self.profit,
             'notes': self.notes,
             'created_at': self.created_at.isoformat(),
             'updated_at': self.updated_at.isoformat(),
@@ -58,6 +68,7 @@ class Order(db.Model):
         if include_items:
             d['items'] = [item.to_dict() for item in self.items]
         return d
+
 
 
 class OrderItem(db.Model):

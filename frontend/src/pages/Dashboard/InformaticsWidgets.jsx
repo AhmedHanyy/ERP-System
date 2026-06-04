@@ -49,6 +49,16 @@ export function ForecastingWidget({ stats }) {
                     ) : (
                         <p className="text-xs text-text-muted italic py-4">No forecasting data available.</p>
                     )}
+                    {stats && (
+                        <div className="mt-4 p-3 bg-blue-50/30 dark:bg-slate-900 rounded-xl border border-blue-100/30">
+                            <p className="text-[11px] font-bold text-blue-600 dark:text-blue-400 uppercase tracking-widest mb-1">Executive Recommendation</p>
+                            <p className="text-xs text-text-muted">
+                                {isUpward 
+                                    ? "Demand is projected to rise over the next 30 days. Maintain high stock levels of top-performing items to maximize fulfillment rate." 
+                                    : "Demand trend is stable/cooling. Consider targeted discounts or promotional offers to accelerate slow-moving variants."}
+                            </p>
+                        </div>
+                    )}
                 </div>
             </div>
             <button 
@@ -101,6 +111,14 @@ export function SegmentationWidget({ data }) {
                         })
                     ) : (
                         <p className="text-xs text-text-muted italic py-4">No segmentation details loaded.</p>
+                    )}
+                    {segments.length > 0 && (
+                        <div className="mt-4 p-3 bg-purple-50/30 dark:bg-slate-900 rounded-xl border border-purple-100/30">
+                            <p className="text-[11px] font-bold text-purple-600 dark:text-purple-400 uppercase tracking-widest mb-1">Strategic CRM Insight</p>
+                            <p className="text-xs text-text-muted">
+                                Champions represent your highest-LTV assets. Retain them with early access to new collections, and target the At-Risk cohort with automated email flows.
+                            </p>
+                        </div>
                     )}
                 </div>
             </div>
@@ -160,6 +178,12 @@ export function BasketAnalysisWidget({ bundles }) {
                                     <p className="text-[9px] font-black text-text-muted uppercase">Lift Score</p>
                                     <p className="text-xs font-black text-blue-600">{topRule.lift.toFixed(1)}x</p>
                                 </div>
+                            </div>
+                            <div className="mt-4 p-3 bg-amber-50/30 dark:bg-slate-900 rounded-xl border border-amber-100/30">
+                                <p className="text-[11px] font-bold text-amber-600 dark:text-amber-400 uppercase tracking-widest mb-1">Bundle Strategy</p>
+                                <p className="text-xs text-text-muted">
+                                    These categories exhibit a strong purchase correlation. Promote them as a combined package or cross-sell them during checkout to increase AOV.
+                                </p>
                             </div>
                         </div>
                     ) : (

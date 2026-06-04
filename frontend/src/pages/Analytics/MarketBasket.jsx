@@ -8,8 +8,8 @@ export default function MarketBasket() {
   const [loading,  setLoading]  = useState(true)
   const [error,    setError]    = useState(null)
   
-  const [minSupport, setMinSupport] = useState(0.02)
-  const [minConf, setMinConf] = useState(0.3)
+  const [minSupport, setMinSupport] = useState(0.003)
+  const [minConf, setMinConf] = useState(0.1)
 
   const load = async () => {
     setLoading(true)
@@ -40,7 +40,7 @@ export default function MarketBasket() {
                        <span className="text-[10px] font-mono text-accent-sky">{(minSupport * 100).toFixed(1)}%</span>
                     </div>
                     <input 
-                      type="range" min="0.01" max="0.1" step="0.01" 
+                      type="range" min="0.001" max="0.02" step="0.001" 
                       className="w-full h-1.5 bg-bg-primary rounded-lg appearance-none cursor-pointer accent-accent-sky"
                       value={minSupport}
                       onChange={e => setMinSupport(parseFloat(e.target.value))}
@@ -52,7 +52,7 @@ export default function MarketBasket() {
                        <span className="text-[10px] font-mono text-accent-sky">{(minConf * 100).toFixed(0)}%</span>
                     </div>
                     <input 
-                      type="range" min="0.1" max="0.8" step="0.1" 
+                      type="range" min="0.05" max="0.6" step="0.05" 
                       className="w-full h-1.5 bg-bg-primary rounded-lg appearance-none cursor-pointer accent-accent-sky"
                       value={minConf}
                       onChange={e => setMinConf(parseFloat(e.target.value))}

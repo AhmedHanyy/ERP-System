@@ -25,9 +25,10 @@ from mlxtend.preprocessing import TransactionEncoder
 from .etl import extract_basket_data
 
 
-def run_market_basket(min_support: float = 0.02, min_confidence: float = 0.3) -> dict:
+def run_market_basket(min_support: float = 0.003, min_confidence: float = 0.1) -> dict:
     """
     Run Apriori on real order baskets (IsSynthetic=False only).
+    Filters to multi-item baskets to compute realistic association rules.
     Returns: frequent itemsets + association rules.
     """
     df = extract_basket_data()
@@ -39,17 +40,22 @@ def run_market_basket(min_support: float = 0.02, min_confidence: float = 0.3) ->
     baskets = df.groupby(['order_id', 'product_name'])['quantity'].sum().unstack(fill_value=0)
     baskets = baskets.map(lambda x: True if x > 0 else False)
 
+    # Filter to orders containing at least 2 distinct items (co-occurrences only)
+    multi_item_baskets = baskets[baskets.sum(axis=1) >= 2]
+
+    if multi_item_baskets.empty:
+        return {'error': 'Not enough multi-item transactions found.', 'rules': [], 'itemsets': []}
+
     # Apriori
     try:
-        # Try a lower support threshold of 0.005 if no data found with 0.02
         support_to_use = min_support
-        frequent_itemsets = apriori(baskets, min_support=support_to_use, use_colnames=True, max_len=3)
+        frequent_itemsets = apriori(multi_item_baskets, min_support=support_to_use, use_colnames=True, max_len=3)
         
         if frequent_itemsets.empty:
-            frequent_itemsets = apriori(baskets, min_support=0.005, use_colnames=True, max_len=3)
+            frequent_itemsets = apriori(multi_item_baskets, min_support=0.001, use_colnames=True, max_len=3)
 
         if frequent_itemsets.empty:
-             return {'error': 'Not enough data patterns identified yet. Try increasing order diversity.', 'rules': [], 'itemsets': []}
+             return {'error': 'Not enough data patterns identified yet.', 'rules': [], 'itemsets': []}
 
         rules = association_rules(frequent_itemsets, metric='confidence', min_threshold=min_confidence)
         rules = rules.sort_values('lift', ascending=False)

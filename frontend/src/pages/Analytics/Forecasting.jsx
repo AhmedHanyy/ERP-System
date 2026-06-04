@@ -5,7 +5,7 @@ import {
   ComposedChart, Line, Area, XAxis, YAxis, CartesianGrid, 
   Tooltip, ResponsiveContainer, Legend 
 } from 'recharts'
-import { Sparkles, TrendingUp, Calendar, Info } from 'lucide-react'
+import { Sparkles, TrendingUp, Calendar, Info, AlertTriangle } from 'lucide-react'
 
 export default function Forecasting() {
   const [data,     setData]     = useState(null)
@@ -112,6 +112,15 @@ export default function Forecasting() {
                   <div className="badge-info text-[10px]">R² Score: {data?.model_info?.r2_score || 0}</div>
                </div>
               <div className="space-y-3">
+                  {data?.model_info?.model_quality === 'Poor' && (
+                     <div className="p-3 bg-rose-500/10 border border-rose-500/20 text-rose-400 rounded-xl flex items-start gap-2">
+                        <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+                        <div>
+                           <p className="text-[10px] font-black uppercase">Low Model Fit Quality</p>
+                           <p className="text-[9px] text-rose-400/80 leading-normal mt-0.5">The sales history is highly volatile. Recommendations should be treated with caution.</p>
+                        </div>
+                     </div>
+                  )}
                   <div className="p-3 bg-bg-hover/40 rounded-xl">
                      <p className="text-xs text-text-muted mb-1">Growth Trend (Daily)</p>
                      <p className="text-lg font-bold text-text-primary">
@@ -121,7 +130,12 @@ export default function Forecasting() {
                   </div>
                  <div className="flex gap-2 p-2 bg-accent-violet/5 rounded-xl text-accent-violet">
                     <Info className="w-4 h-4 shrink-0 mt-0.5" />
-                    <p className="text-[10px] leading-relaxed font-medium">Predicted upward trend identified. Suggesting 15% inventory buffer for next 30 days.</p>
+                    <p className="text-[10px] leading-relaxed font-medium">
+                       {data?.model_info?.model_quality === 'Poor' 
+                          ? "Volatility is high. Review catalog distributions manually before committing capital to major procurement orders."
+                          : "Predicted demand trend is stable. Suggesting 15% inventory buffer for next 30 days."
+                       }
+                    </p>
                  </div>
               </div>
            </div>

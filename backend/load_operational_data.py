@@ -36,7 +36,7 @@ import re
 import math
 import pandas as pd
 import numpy as np
-from datetime import datetime
+from datetime import datetime, timedelta
 
 # Make sure app is importable
 sys.path.insert(0, r'd:\ahmed\Year3\GP-SmartERP\SmartERP\backend')
@@ -46,11 +46,14 @@ from app.models import (
     Category, Product, ProductVariant,
     Customer, Order, OrderItem,
     Inventory, InventoryLog,
+    Supplier, ProcurementRequest,
 )
 from app.analytics.synthetic_generator import (
     build_product_catalog,
     build_category_cost_ratios,
     compute_cost_for_variant,
+    COLOR_KEYWORDS,
+    _normalize_size,
 )
 from app.analytics.etl_pipeline import clean_city
 
@@ -87,6 +90,42 @@ def safe_int(val, default=0) -> int:
         return default
 
 
+def get_tokens(text):
+    if not isinstance(text, str):
+        return set()
+    text_clean = re.sub(r'[^a-zA-Z0-9\s]', ' ', text.lower())
+    noise = {'unisex', 'heavy', 'summer', 'basic', 'copy', 'premium', 'regular', 'fit', 'co', 'of', 'the', 'in', 'and', 'with', 'a', 'an', 'to', 'for', 'at'}
+    tokens = {t for t in text_clean.split() if t and t not in noise}
+    return tokens
+
+
+def get_color_from_name(name):
+    if not name:
+        return None
+    name_lower = name.lower()
+    for color in sorted(COLOR_KEYWORDS, key=len, reverse=True):
+        pattern = r'\b' + re.escape(color) + r'\b'
+        if re.search(pattern, name_lower):
+            return color
+    return None
+
+
+def colors_match(c1, c2):
+    if not c1 or not c2:
+        return False
+    c1 = c1.lower().strip()
+    c2 = c2.lower().strip()
+    if c1 == c2:
+        return True
+    w1 = set(c1.split())
+    w2 = set(c2.split())
+    if w1.intersection(w2):
+        return True
+    if c1 in c2 or c2 in c1:
+        return True
+    return False
+
+
 # ─── Map catalog category names to ERP-friendly names ─────────────────────────
 CATEGORY_ICONS = {
     'T-Shirts':     'fa-shirt',
@@ -102,21 +141,21 @@ CATEGORY_ICONS = {
 def map_order_status(fin_status: str, fulfill_status: str, cancelled_at) -> str:
     """
     Shopify → ERP status mapping:
-      - Cancelled at is set          → Cancelled
-      - voided                       → Cancelled
-      - paid + fulfilled             → Delivered
-      - paid + unfulfilled/partial   → Shipped (being prepared)
-      - pending                      → Pending
+      - Cancelled at is set OR voided/refunded  → Cancelled
+      - fulfillment_status == 'fulfilled'       → Delivered  (exact match)
+      - paid + partial fulfillment              → Shipped
+      - pending / unfulfilled                  → Pending
     """
     if pd.notna(cancelled_at) and str(cancelled_at).strip() not in ('', 'nan'):
         return 'Cancelled'
     fin  = str(fin_status).lower().strip() if pd.notna(fin_status) else ''
     ful  = str(fulfill_status).lower().strip() if pd.notna(fulfill_status) else ''
-    if fin == 'voided':
+    if fin in ('voided', 'refunded'):
         return 'Cancelled'
-    if fin == 'paid' and 'fulfilled' in ful and 'unfulfilled' not in ful:
+    # Exact match on 'fulfilled' — avoids substring collision with 'unfulfilled'
+    if ful == 'fulfilled':
         return 'Delivered'
-    if fin == 'paid':
+    if ful == 'partial':
         return 'Shipped'
     if fin == 'pending':
         return 'Pending'
@@ -169,6 +208,8 @@ def run_phase_a():
         # ── CLEAR OPERATIONAL DATA ───────────────────────────────────────────
         print('\n[3/7] Clearing existing operational data...')
         # Delete in dependency order (children first)
+        ProcurementRequest.query.delete()
+        Supplier.query.delete()
         InventoryLog.query.delete()
         Inventory.query.delete()
         OrderItem.query.delete()
@@ -179,6 +220,41 @@ def run_phase_a():
         Category.query.delete()
         db.session.commit()
         print('  All operational tables cleared.')
+
+        # ── SEED SUPPLIERS ───────────────────────────────────────────────────
+        print('\nSeeding operational suppliers (Feathers & Printlet)...')
+        feathers = Supplier(
+            id=1,
+            name='Feathers',
+            contact_person='Ahmed Feathers',
+            email='procurement@feathers.com',
+            phone='+20 10 1111 2222',
+            whatsapp_number='+201011112222',
+            address='12th Street, Industrial Zone, Cairo, Egypt',
+            rating=4.8,
+            lead_time_days=5,
+            is_active=True,
+            notes='Printed Products Supplier',
+            is_real=True
+        )
+        printlet = Supplier(
+            id=2,
+            name='Printlet',
+            contact_person='Mohamed Printlet',
+            email='procurement@printlet.com',
+            phone='+20 10 3333 4444',
+            whatsapp_number='+201033334444',
+            address='25th Street, Industrial District, Giza, Egypt',
+            rating=4.6,
+            lead_time_days=7,
+            is_active=True,
+            notes='Non-Printed (Basic) Products Supplier',
+            is_real=True
+        )
+        db.session.add(feathers)
+        db.session.add(printlet)
+        db.session.commit()
+        print('  Suppliers seeded.')
 
         # ── LOAD CATEGORIES ──────────────────────────────────────────────────
         print('\n[4/7] Loading categories...')
@@ -206,6 +282,21 @@ def run_phase_a():
         sku_to_product_id    = {}  # sku    -> operational product id (for order linking)
         products_loaded = 0
         variants_loaded = 0
+
+        # Pre-build lookup mappings for high-precision matching fallback
+        variant_sku_to_handles = {}
+        for _, row in products_df.dropna(subset=['Variant SKU']).iterrows():
+            vsku = str(row['Variant SKU']).strip().replace("'", "")
+            h = str(row['Handle']).strip()
+            if vsku and vsku != 'nan':
+                if vsku not in variant_sku_to_handles:
+                    variant_sku_to_handles[vsku] = []
+                if h not in variant_sku_to_handles[vsku]:
+                    variant_sku_to_handles[vsku].append(h)
+
+        handle_tokens = {}
+        handle_to_color = {}
+        handle_to_title = {}
 
         # Group by handle
         handles = catalog_df['Handle'].unique()
@@ -271,6 +362,15 @@ def run_phase_a():
             sku_to_product_id[parent_sku] = product.id
             products_loaded += 1
 
+            # Populate in-memory lookup data for fallbacks
+            title = safe_str(first_row.get('Title'), handle)
+            color = safe_str(first_row.get('Color'), 'N/A')
+            handle_to_title[handle] = title
+            handle_to_color[handle] = color
+
+            text_clean = re.sub(r'[^a-zA-Z0-9\s]', ' ', (title + " " + handle.replace('-', ' ')).lower())
+            handle_tokens[handle] = get_tokens(text_clean)
+
             # Load variants (all rows in the group including first)
             for _, var_row in group.iterrows():
                 var_sku     = safe_str(var_row.get('SKU'))
@@ -305,7 +405,7 @@ def run_phase_a():
         inv_loaded = 0
         for handle, prod_id in handle_to_product_id.items():
             group = catalog_df[catalog_df['Handle'] == handle]
-            total_qty = int(group['InventoryQty'].sum())
+            total_qty = max(0, int(group['InventoryQty'].sum()))  # Clamp: Shopify allows negative qty (oversold)
 
             inv = Inventory(
                 product_id         = prod_id,
@@ -431,12 +531,14 @@ def run_phase_a():
             cancelled_at  = meta.get('Cancelled at')
             erp_status    = map_order_status(fin_status, fulfill_status, cancelled_at)
 
-            raw_total    = meta.get('Total')
-            raw_discount = meta.get('Discount Amount')
-            raw_shipping = meta.get('Shipping')
-            total_amount = safe_float(raw_total,    0.0)
-            discount     = safe_float(raw_discount, 0.0)
-            shipping_fee = safe_float(raw_shipping, 0.0)
+            subtotal     = safe_float(meta.get('Subtotal'), 0.0)
+            discount     = safe_float(meta.get('Discount Amount'), 0.0)
+            shipping_city_raw = safe_str(meta.get('Shipping City'))
+            shipping_city_norm = clean_city(shipping_city_raw)
+            shipping_fee = 50.0 if shipping_city_norm in ('Cairo', 'Giza') else 70.0
+            
+            # Recalculate total
+            total_amount = subtotal + shipping_fee - discount
 
             notes = safe_str(meta.get('Notes'))
 
@@ -474,15 +576,80 @@ def run_phase_a():
                 qty       = safe_int(row.get('Lineitem quantity', 1), 1)
                 unit_price= safe_float(row.get('Lineitem price', 0))
 
-                # Resolve product_id: SKU → Handle prefix → Name match → fallback
+                # Resolve product_id: SKU → Original SKU (resolved collision) → Exact title → Token overlap → fallback
                 prod_id = sku_to_product_id.get(sku_raw)
 
+                # Try mapping from original variant SKU (with color-aware collision resolution)
+                if not prod_id and sku_raw in variant_sku_to_handles:
+                    h_list = variant_sku_to_handles[sku_raw]
+                    if len(h_list) == 1:
+                        prod_id = handle_to_product_id.get(h_list[0])
+                    else:
+                        item_color = get_color_from_name(item_name)
+                        item_tokens = get_tokens(item_name)
+                        best_h = None
+                        max_score = -9999
+                        for h in h_list:
+                            h_title = handle_to_title.get(h, '')
+                            h_color = handle_to_color.get(h, '')
+                            score = len(item_tokens.intersection(handle_tokens[h]))
+                            if item_color:
+                                h_color_lower = h_color.lower() if h_color else None
+                                if h_color_lower and h_color_lower != 'n/a':
+                                    if colors_match(h_color_lower, item_color):
+                                        score += 10
+                                    else:
+                                        score -= 20
+                                else:
+                                    has_other_color = False
+                                    for c in COLOR_KEYWORDS:
+                                        if not colors_match(c, item_color) and re.search(r'\b' + re.escape(c) + r'\b', h_title.lower()):
+                                            has_other_color = True
+                                    if has_other_color:
+                                        score -= 20
+                            if score > max_score:
+                                max_score = score
+                                best_h = h
+                        if best_h:
+                            prod_id = handle_to_product_id.get(best_h)
+
+                # Try exact title match
                 if not prod_id and item_name:
-                    # Try exact title match
                     base_title = item_name.split(' - ')[0].strip()
-                    prod = Product.query.filter(Product.name == base_title).first()
-                    if prod:
-                        prod_id = prod.id
+                    for h, title in handle_to_title.items():
+                        if title == base_title:
+                            prod_id = handle_to_product_id.get(h)
+                            break
+
+                # Fallback to color-aware token overlap matching against all products
+                if not prod_id and item_name:
+                    item_color = get_color_from_name(item_name)
+                    item_tokens = get_tokens(item_name)
+                    best_h = None
+                    max_score = -9999
+                    for h in handles:
+                        h_title = handle_to_title.get(h, '')
+                        h_color = handle_to_color.get(h, '')
+                        score = len(item_tokens.intersection(handle_tokens[h]))
+                        if item_color:
+                            h_color_lower = h_color.lower() if h_color else None
+                            if h_color_lower and h_color_lower != 'n/a':
+                                if colors_match(h_color_lower, item_color):
+                                    score += 10
+                                else:
+                                    score -= 20
+                            else:
+                                has_other_color = False
+                                for c in COLOR_KEYWORDS:
+                                    if not colors_match(c, item_color) and re.search(r'\b' + re.escape(c) + r'\b', h_title.lower()):
+                                        has_other_color = True
+                                if has_other_color:
+                                    score -= 20
+                        if score > max_score:
+                            max_score = score
+                            best_h = h
+                    if max_score >= 1 and best_h:
+                        prod_id = handle_to_product_id.get(best_h)
 
                 if not prod_id:
                     prod_id = fallback_product_id
@@ -505,6 +672,64 @@ def run_phase_a():
         print(f'  Orders loaded:        {orders_loaded:,}')
         print(f'  Order items loaded:   {items_loaded:,}')
         print(f'  Unresolved items:     {unresolved_items:,}')
+
+        # ── GENERATE PROCUREMENT REQUESTS ────────────────────────────────────
+        print('\nGenerating operational Procurement Requests (historical restocks)...')
+        
+        def is_printed_product(p):
+            name = (p.name or '').lower()
+            desc = (p.description or '').lower()
+            return 'printed' in name or 'graphic' in name or 'printed' in desc or 'graphic' in desc
+            
+        proc_requests_count = 0
+        start_date = datetime(2023, 1, 1)
+        end_date = datetime(2025, 12, 31)
+        
+        np.random.seed(42)
+        
+        all_variants = ProductVariant.query.all()
+        for variant in all_variants:
+            product = variant.product
+            price = product.price + variant.price_adj
+            cost = round(price / 2.5, 2)
+            
+            supplier_id = 1 if is_printed_product(product) else 2
+            
+            sim_date = start_date + timedelta(days=int(np.random.randint(0, 30)))
+            while sim_date < end_date:
+                po_interval = int(np.random.randint(60, 90))
+                sim_date += timedelta(days=po_interval)
+                if sim_date >= end_date:
+                    break
+                
+                lead_time = int(np.random.randint(5, 14))
+                received_date = sim_date + timedelta(days=lead_time)
+                
+                moq = int(np.random.choice([50, 100, 150, 200], p=[0.4, 0.35, 0.15, 0.10]))
+                status = np.random.choice(
+                    ['Received', 'Confirmed', 'Cancelled'],
+                    p=[0.88, 0.07, 0.05]
+                )
+                
+                po = ProcurementRequest(
+                    supplier_id=supplier_id,
+                    product_id=product.id,
+                    quantity=moq,
+                    unit_cost=cost,
+                    total_cost=round(moq * cost, 2),
+                    status=status,
+                    is_auto_suggested=False,
+                    notes='Historical restock simulation',
+                    is_real=False,
+                    requested_at=sim_date,
+                    expected_at=received_date,
+                    received_at=received_date if status == 'Received' else None
+                )
+                db.session.add(po)
+                proc_requests_count += 1
+                
+        db.session.commit()
+        print(f'  Procurement requests generated: {proc_requests_count:,}')
 
         # ── SUMMARY ──────────────────────────────────────────────────────────
         duration = (datetime.utcnow() - start).total_seconds()

@@ -120,12 +120,16 @@ export default function Dashboard() {
 }
 
 function renderRoleKPIs(role, kpis) {
-    if (role === 'Admin') return (
+    if (role === 'Admin' || role === 'Operations Manager' || role === 'Analytics Manager') return (
         <>
-            <KPICard title="Institutional Revenue" value={kpis?.revenue?.value || 0} prefix="EGP " icon={DollarSign} color="emerald" change={kpis?.revenue?.change || 0} />
-            <KPICard title="Total Settlements" value={kpis?.total_orders?.value || 0} icon={ShoppingBag} color="brand" change={kpis?.total_orders?.change || 0} />
-            <KPICard title="Projected Margin" value={kpis?.margin?.value || 0} suffix="%" icon={TrendingUp} color="sky" change={kpis?.margin?.change || 0} label="MoM Margin Change" />
-            <KPICard title="Growth Velocity" value={kpis?.revenue?.change || 0} suffix="%" icon={Target} color="amber" label="MoM Growth Rate" />
+            <KPICard title="Total Revenue" value={kpis?.revenue?.value || 0} prefix="EGP " icon={DollarSign} color="emerald" change={kpis?.revenue?.change} />
+            <KPICard title="Total Orders" value={kpis?.orders?.value || 0} icon={ShoppingBag} color="brand" change={kpis?.orders?.change} />
+            <KPICard title="Total Customers" value={kpis?.customers?.value || 0} icon={Users} color="sky" change={kpis?.customers?.change} />
+            <KPICard title="Active Products" value={kpis?.products?.value || 0} icon={Layers} color="amber" change={kpis?.products?.change} />
+            <KPICard title="Inventory Value" value={kpis?.inventory_value?.value || 0} prefix="EGP " icon={TrendingUp} color="brand" change={kpis?.inventory_value?.change} />
+            <KPICard title="Average Order Value" value={kpis?.aov?.value || 0} prefix="EGP " icon={DollarSign} color="emerald" change={kpis?.aov?.change} />
+            <KPICard title="Gross Profit" value={kpis?.gross_profit?.value || 0} prefix="EGP " icon={TrendingUp} color="sky" change={kpis?.gross_profit?.change} />
+            <KPICard title="Gross Margin" value={kpis?.gross_margin?.value || 0} suffix="%" icon={Target} color="amber" change={kpis?.gross_margin?.change} />
         </>
     )
     if (role === 'Procurement Staff' || role === 'Procurement Officer') return (
@@ -134,14 +138,6 @@ function renderRoleKPIs(role, kpis) {
             <KPICard title="Transit Assets" value={kpis?.transit_assets?.count || 0} icon={Truck} color="brand" label={`Value: EGP ${kpis?.transit_assets?.value?.toLocaleString() || 0}`} />
             <KPICard title="Supply Latency" value={kpis?.supply_latency || 7.2} suffix=" Days" icon={Calendar} color="sky" label="Average Delivery Lead" />
             <KPICard title="Resource Allocation" value={kpis?.resource_allocation || 45} suffix="%" icon={DollarSign} color="amber" label="Budget Allocated" />
-        </>
-    )
-    if (role === 'Operations Manager') return (
-        <>
-            <KPICard title="Throughput" value={kpis?.throughput || 0} icon={ShoppingBag} color="emerald" label="Orders Handled" />
-            <KPICard title="Service Level" value={kpis?.service_level || 98.5} suffix="%" icon={Target} color="brand" label="On-Time Delivery SLA" />
-            <KPICard title="Process Alerts" value={kpis?.process_alerts || 0} icon={AlertTriangle} color="amber" label="Urgent Alerts Pending" />
-            <KPICard title="Efficiency Index" value={4.9} suffix="/5" icon={TrendingUp} color="sky" label="SOP Health Index" />
         </>
     )
     return (

@@ -104,8 +104,8 @@ def customer_insights(current_user, customer_id):
 @analytics_bp.route('/market-basket')
 @roles_required('Admin', 'Analytics Manager')
 def market_basket(current_user):
-    min_support = request.args.get('min_support', 0.02, type=float)
-    min_confidence = request.args.get('min_confidence', 0.3, type=float)
+    min_support = request.args.get('min_support', 0.003, type=float)
+    min_confidence = request.args.get('min_confidence', 0.1, type=float)
     return jsonify(run_market_basket(min_support=min_support, min_confidence=min_confidence))
 
 @analytics_bp.route('/procurement-engine')
@@ -115,8 +115,12 @@ def smart_procurement(current_user):
     items = db.session.query(Product, Inventory).join(Inventory).all()
     suggestions = []
     
+    # Pre-extract sales data once to avoid database query N+1 times
+    from app.analytics.etl import preprocess_sales, extract_sales_data
+    sales_df = preprocess_sales(extract_sales_data(include_synthetic=True))
+    
     for p, inv in items:
-        forecast = forecast_product_demand(p.id, days_ahead=30)
+        forecast = forecast_product_demand(p.id, days_ahead=30, sales_df=sales_df)
         daily_avg = forecast.get('total_forecasted_units', 0) / 30
         
         if daily_avg > 0:
@@ -167,21 +171,132 @@ def smart_procurement(current_user):
 @analytics_bp.route('/bi-report')
 @roles_required('Admin', 'Analytics Manager')
 def bi_report(current_user):
+    from app.models.warehouse import FactSales, DimCustomer, DimDate
+    import pandas as pd
+    import math
+
+    # 1. Product Performance and ABC Analysis (real only)
     product_df_list = get_product_sales_df().to_dict(orient='records')
     abc_report = []
+    total_revenue_from_sales = 0.0
     if product_df_list:
-        total_revenue = sum(p['revenue'] for p in product_df_list)
+        total_revenue_from_sales = sum(p['revenue'] for p in product_df_list)
         sorted_products = sorted(product_df_list, key=lambda x: x['revenue'], reverse=True)
-        cum_rev = 0
+        cum_rev = 0.0
         for p in sorted_products:
             cum_rev += p['revenue']
-            pct = (cum_rev / total_revenue) * 100 if total_revenue > 0 else 0
+            pct = (cum_rev / total_revenue_from_sales) * 100 if total_revenue_from_sales > 0 else 0
             p['abc_class'] = 'A' if pct <= 80 else 'B' if pct <= 95 else 'C'
             abc_report.append(p)
 
+    # 2. High-Level Financial Suite (real only)
+    filters = [FactSales.IsSynthetic == False, FactSales.IsCancelled == False]
+    rev_q  = db.session.query(func.sum(FactSales.GrossRevenue - FactSales.DiscountAmount)).filter(*filters).scalar() or 0.0
+    cogs_q = db.session.query(func.sum(FactSales.UnitCost * FactSales.Quantity)).filter(*filters).scalar() or 0.0
+    sq = db.session.query(FactSales.OrderNumber, func.max(FactSales.OrderShipping).label('s')).filter(*filters).group_by(FactSales.OrderNumber).subquery()
+    ship_q = db.session.query(func.sum(sq.c.s)).scalar() or 0.0
+    
+    tot_rev  = rev_q + ship_q
+    gprofit  = tot_rev - cogs_q
+    gmargin  = (gprofit / tot_rev * 100) if tot_rev > 0 else 0.0
+
+    financial_summary = {
+        'total_revenue': round(tot_rev, 2),
+        'total_cogs': round(cogs_q, 2),
+        'gross_profit': round(gprofit, 2),
+        'gross_margin_pct': round(gmargin, 1)
+    }
+
+    # 3. Monthly Revenue Trend (real only)
+    monthly_results = db.session.query(
+        DimDate.Year,
+        DimDate.Month,
+        DimDate.MonthName,
+        func.sum(FactSales.GrossRevenue - FactSales.DiscountAmount).label('revenue'),
+        func.count(func.distinct(FactSales.OrderNumber)).label('orders')
+    ).join(
+        DimDate, FactSales.DateKey == DimDate.DateKey
+    ).filter(
+        FactSales.IsSynthetic == False,
+        FactSales.IsCancelled == False
+    ).group_by(
+        DimDate.Year, DimDate.Month, DimDate.MonthName
+    ).order_by(
+        DimDate.Year, DimDate.Month
+    ).all()
+    
+    monthly_revenue = [
+        {
+            'month': f"{r.MonthName} {r.Year}",
+            'revenue': round(float(r.revenue or 0), 2),
+            'orders': int(r.orders or 0)
+        } for r in monthly_results
+    ]
+
+    # 4. Top Regions (real only)
+    region_results = db.session.query(
+        DimCustomer.Region.label('city'),
+        func.sum(FactSales.GrossRevenue - FactSales.DiscountAmount).label('revenue')
+    ).join(
+        DimCustomer, FactSales.CustomerKey == DimCustomer.CustomerKey
+    ).filter(
+        FactSales.IsSynthetic == False,
+        FactSales.IsCancelled == False
+    ).group_by(
+        DimCustomer.Region
+    ).order_by(
+        db.desc('revenue')
+    ).all()
+    
+    region_distribution = [
+        {
+            'city': r.city or 'Unknown',
+            'revenue': round(float(r.revenue or 0), 2)
+        } for r in region_results
+    ]
+
+    # 5. Safety Stock and Risk Analysis
+    from app.analytics.etl import extract_sales_data
+    sales_df = extract_sales_data(include_synthetic=False)
+    
+    # Calculate demand variance per product family
+    daily_prod_sales = sales_df.groupby(['product_name', 'order_date'])['quantity'].sum().reset_index()
+    prod_stats = daily_prod_sales.groupby('product_name').agg(
+        avg_daily=('quantity', 'mean'),
+        std_daily=('quantity', 'std')
+    ).reset_index()
+
+    inventory_items = db.session.query(Product, Inventory).join(Inventory).all()
+    safety_stock_report = []
+    
+    for p, inv in inventory_items:
+        stats_row = prod_stats[prod_stats['product_name'] == p.name]
+        if not stats_row.empty:
+            std_d = float(stats_row.iloc[0]['std_daily'] or 0)
+            if pd.isna(std_d):
+                std_d = 0.0
+            lead_time = 7.0  # Lead time fallback for standard suppliers
+            safety = int(math.ceil(1.65 * std_d * math.sqrt(lead_time)))
+            if safety < 10:
+                safety = 10
+        else:
+            safety = 10
+
+        status = 'Healthy' if inv.quantity > safety else 'Low Stock' if inv.quantity > 0 else 'Stockout'
+        safety_stock_report.append({
+            'product_id': p.id,
+            'name': p.name,
+            'current_stock': inv.quantity,
+            'safety_stock': safety,
+            'status': status
+        })
+
     return jsonify({
         'abc_analysis': abc_report[:30],
-        'financial_summary': { 'total_revenue': sum(p['revenue'] for p in abc_report) }
+        'financial_summary': financial_summary,
+        'monthly_revenue': monthly_revenue,
+        'region_distribution': region_distribution,
+        'safety_stock_report': safety_stock_report[:30]
     })
 
 @analytics_bp.route('/notifications')

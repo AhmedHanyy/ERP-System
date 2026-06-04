@@ -67,6 +67,7 @@ export const procurementApi = {
   createRequest:    (data) => api.post('/procurement/requests', data),
   updateStatus:     (id, status) => api.put(`/procurement/requests/${id}/status`, { status }),
   getSuggestions:   ()     => api.get('/analytics/procurement-engine'),
+  getStats:         ()     => api.get('/procurement/stats'),
 }
 
 // ─── Analytics ────────────────────────────────────────────────────────────────

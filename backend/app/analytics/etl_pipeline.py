@@ -234,12 +234,37 @@ def run_etl_pipeline():
 
         dim_cust_df = pd.DataFrame(cust_records)
         dim_cust_df.drop_duplicates(subset=['ShopifyCustomerID'], inplace=True)
+        
+        # Align RFM_Segment with operational customer database
+        try:
+            op_custs = db.session.query(Customer.email, Customer.segment).all()
+            email_to_segment = {c.email.lower().strip(): c.segment for c in op_custs if c.email}
+            dim_cust_df['RFM_Segment'] = dim_cust_df['Email'].str.strip().str.lower().map(email_to_segment).fillna('New')
+        except Exception as e:
+            print(f"  Could not align RFM segments: {e}")
+            
         print(f'  DimCustomer rows: {len(dim_cust_df):,} ({dim_cust_df["IsFraudRisk"].sum()} fraud-flagged)')
 
-        # ── DIM SUPPLIER (Demo Data) ──────────────────────────────────────────
-        print('\n[4/8] Building DimSupplier (demo stubs, IsReal=False)...')
-        dim_supplier_df = get_demo_suppliers_df()
-        print(f'  DimSupplier rows: {len(dim_supplier_df):,} (all IsReal=False — awaiting real Excel)')
+        # ── DIM SUPPLIER (extracted from operational tables) ──────────────────
+        print('\n[4/8] Extracting DimSupplier from operational suppliers...')
+        suppliers = Supplier.query.all()
+        supplier_records = []
+        for s in suppliers:
+            supplier_records.append({
+                'SupplierKey':      s.id,
+                'SupplierName':     s.name,
+                'ContactPerson':    s.contact_person,
+                'Phone':            s.phone,
+                'SupplierType':     s.notes, # Feathers is 'Printed Products Supplier', Printlet is 'Non-Printed (Basic) Products Supplier'
+                'Country':          'Egypt',
+                'LeadTimeDays_Avg': s.lead_time_days,
+                'MinOrderQty':      100 if s.id == 1 else 200,
+                'Rating':           s.rating,
+                'Status':           'Active' if s.is_active else 'Inactive',
+                'IsReal':           s.is_real,
+            })
+        dim_supplier_df = pd.DataFrame(supplier_records)
+        print(f'  DimSupplier rows: {len(dim_supplier_df):,}')
 
         # ── DIM CHANNEL ──────────────────────────────────────────────────────
         dim_channel_df = pd.DataFrame([
@@ -350,6 +375,15 @@ def run_etl_pipeline():
         sku_to_prod_key  = {p.SKU: p.ProductKey for p in all_current}
         sku_to_cost      = {p.SKU: p.Cost       for p in all_current}
         sku_to_price     = {p.SKU: p.Price      for p in all_current}
+
+        # Build a map of ProductKey to IsPrinted
+        prod_key_to_is_printed = {}
+        for p in all_current:
+            title = (p.Title or '').lower()
+            ptype = (p.ProductType or '').lower()
+            pfamily = (p.ProductFamily or '').lower()
+            is_printed = 'printed' in title or 'graphic' in title or 'printed' in ptype or 'graphic' in ptype or 'printed' in pfamily or 'graphic' in pfamily
+            prod_key_to_is_printed[p.ProductKey] = is_printed
         print(f'  DimProduct rows (current): {len(sku_to_prod_key):,}')
 
         # ── LOAD DIMENSION TABLES ─────────────────────────────────────────────
@@ -430,11 +464,17 @@ def run_etl_pipeline():
             shopify_id_raw = row.get('Id')
             shopify_id = str(int(float(shopify_id_raw))) if pd.notna(shopify_id_raw) else None
 
+            shipping_city_raw = safe_str(row.get('Shipping City'))
+            shipping_city_norm = clean_city(shipping_city_raw)
+            shipping_fee = 50.0 if shipping_city_norm in ('Cairo', 'Giza') else 70.0
+            
+            supplier_key = 1 if prod_key_to_is_printed.get(prod_key, False) else 2
+
             real_sales_records.append({
                 'DateKey':          date_key,
                 'CustomerKey':      cust_key,
                 'ProductKey':       prod_key,
-                'SupplierKey':      1,
+                'SupplierKey':      supplier_key,
                 'ChannelKey':       1,  # Online only
                 'OrderNumber':      safe_str(row.get('Name')),
                 'ShopifyOrderID':   shopify_id,
@@ -450,7 +490,7 @@ def run_etl_pipeline():
                 'NetProfit':        round(net_profit, 2),
                 'DiscountCode':     safe_str(row.get('Discount Code')) or None,
                 'OrderSubtotal':    safe_float(row.get('Subtotal')) or None,
-                'OrderShipping':    safe_float(row.get('Shipping')) or None,
+                'OrderShipping':    shipping_fee,
                 'FinancialStatus':  fin_status,
                 'FulfillmentStatus':safe_str(row.get('Fulfillment Status'), 'unfulfilled'),
                 'PaymentMethod':    safe_str(row.get('Payment Method'), 'Cash on Delivery (COD)'),
@@ -539,17 +579,37 @@ def run_etl_pipeline():
         fact_inventory_df = pd.DataFrame(inventory_records)
         print(f'  FactInventory rows: {len(fact_inventory_df):,}')
 
-        # ── FACT PROCUREMENT (demo stubs) ─────────────────────────────────────
-        print('\n  Building FactProcurement (demo stubs, IsReal=False)...')
-        fact_procurement_df = generate_demo_procurement(
-            dim_supplier_df = dim_supplier_df,
-            catalog_df      = catalog_df,
-            sku_to_prod_key = sku_to_prod_key,
-            category_ratios = category_ratios,
-            start_date      = datetime(2023, 1, 1),
-            end_date        = datetime(2025, 12, 31),
-            random_seed     = 42,
-        )
+        # ── FACT PROCUREMENT (extracted from operational tables) ──────────────
+        print('\n  Extracting FactProcurement from operational procurement_requests...')
+        proc_requests = ProcurementRequest.query.all()
+        procurement_records = []
+        for pr in proc_requests:
+            prod_sku = pr.product.sku if pr.product else None
+            prod_key = sku_to_prod_key.get(prod_sku)
+            if not prod_key:
+                prod_key = list(sku_to_prod_key.values())[0] if sku_to_prod_key else 1
+            
+            date_key = int(pr.requested_at.strftime('%Y%m%d'))
+            received_date_key = int(pr.received_at.strftime('%Y%m%d')) if pr.received_at else None
+            
+            lead_time = None
+            if pr.received_at:
+                lead_time = (pr.received_at - pr.requested_at).days
+            
+            procurement_records.append({
+                'DateKey':           date_key,
+                'SupplierKey':       pr.supplier_id,
+                'ProductKey':        prod_key,
+                'QuantityRequested': pr.quantity,
+                'UnitCost':          pr.unit_cost,
+                'TotalCost':         pr.total_cost,
+                'LeadTimeDays':      lead_time,
+                'ReceivedDateKey':   received_date_key,
+                'Status':            pr.status,
+                'IsReal':            pr.is_real,
+            })
+        fact_procurement_df = pd.DataFrame(procurement_records)
+        print(f'  FactProcurement rows: {len(fact_procurement_df):,}')
 
         # ── LOAD FACT TABLES ──────────────────────────────────────────────────
         print('\n[8/8] Loading Fact tables...')
@@ -629,6 +689,22 @@ def generate_synthetic_sales_with_keys(
     records        = []
     current_date   = start_date
 
+    # Map CustomerKey -> shipping fee
+    cust_shipping_map = {}
+    for c in db.session.query(DimCustomer.CustomerKey, DimCustomer.Region).all():
+        city = c.Region or 'Cairo'
+        fee = 50.0 if city in ('Cairo', 'Giza') else 70.0
+        cust_shipping_map[c.CustomerKey] = fee
+
+    # Map ProductKey -> IsPrinted
+    prod_key_to_is_printed = {}
+    for p in db.session.query(DimProduct.ProductKey, DimProduct.Title, DimProduct.ProductType, DimProduct.ProductFamily).all():
+        title = (p.Title or '').lower()
+        ptype = (p.ProductType or '').lower()
+        pfamily = (p.ProductFamily or '').lower()
+        is_printed = 'printed' in title or 'graphic' in title or 'printed' in ptype or 'graphic' in ptype or 'printed' in pfamily or 'graphic' in pfamily
+        prod_key_to_is_printed[p.ProductKey] = is_printed
+
     # Precompute ProductKey per catalog row
     catalog_prod_keys = []
     for _, v in catalog_df.iterrows():
@@ -661,12 +737,14 @@ def generate_synthetic_sales_with_keys(
 
             fin_status   = str(np.random.choice(FIN_STATUS_VALUES, p=FIN_STATUS_WEIGHTS))
             is_cancelled = (fin_status == 'voided')
-            shipping     = float(np.random.choice(SHIPPING_VALUES, p=SHIPPING_WEIGHTS_NORM))
 
             has_discount  = bool(np.random.random() < DISCOUNT_RATE)
             discount_code = str(np.random.choice(DISCOUNT_CODES, p=DISCOUNT_WEIGHTS)) if has_discount else None
 
             cust_key     = int(np.random.choice(customer_keys))
+
+            # Map shipping based on customer's city
+            shipping = cust_shipping_map.get(cust_key, 70.0)
 
             n_rows_vals  = list(ORDER_ROWS_PROBS.keys())
             n_rows_probs = list(ORDER_ROWS_PROBS.values())
@@ -698,7 +776,7 @@ def generate_synthetic_sales_with_keys(
                     'DateKey':          date_key,
                     'CustomerKey':      cust_key,
                     'ProductKey':       pk,
-                    'SupplierKey':      1,
+                    'SupplierKey':      1 if prod_key_to_is_printed.get(pk, False) else 2,
                     'ChannelKey':       1,            # ALWAYS Online
                     'OrderNumber':      order_num,
                     'ShopifyOrderID':   None,

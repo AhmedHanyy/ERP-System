@@ -17,6 +17,7 @@ export default function Inventory() {
   const [adjusting, setAdjusting] = useState(null)  // product_id being adjusted
   const [adjQty, setAdjQty]   = useState(0)
   const [adjType, setAdjType] = useState('add')
+  const [expandedProduct, setExpandedProduct] = useState(null)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -50,16 +51,17 @@ export default function Inventory() {
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
         {[
           { label: 'Total Products', value: summary.total,      color: 'bg-brand-500/10 text-brand-400' },
-          { label: 'In Stock',       value: summary.in_stock,   color: 'bg-accent-emerald/10 text-accent-emerald' },
+          { label: 'Total Variants', value: summary.total_variants, color: 'bg-accent-violet/10 text-accent-violet' },
+          { label: 'Inventory Value', value: summary.value ? `EGP ${summary.value.toLocaleString(undefined, {maximumFractionDigits: 0})}` : '—', color: 'bg-emerald-500/10 text-emerald-400' },
           { label: 'Low Stock',      value: summary.low_stock,  color: 'bg-accent-amber/10 text-accent-amber' },
           { label: 'Out of Stock',   value: summary.out_of_stock, color: 'bg-accent-rose/10 text-accent-rose' },
         ].map(s => (
           <div key={s.label} className="glass-card p-5">
-            <p className={`text-2xl font-bold mb-1 ${s.color.split(' ')[1]}`}>{s.value ?? '—'}</p>
-            <p className="text-xs text-text-muted">{s.label}</p>
+            <p className={`text-xl font-black mb-1 ${s.color.split(' ')[1]}`}>{s.value ?? '—'}</p>
+            <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider">{s.label}</p>
           </div>
         ))}
       </div>
@@ -94,7 +96,17 @@ export default function Inventory() {
                 {items.map(item => (
                   <>
                     <tr key={item.id}>
-                      <td className="font-medium">{item.name}</td>
+                      <td className="font-medium">
+                        <div className="flex items-center gap-2">
+                          <button 
+                            onClick={() => setExpandedProduct(expandedProduct === item.id ? null : item.id)}
+                            className="p-1 text-[9px] font-bold bg-brand-500/15 text-brand-400 hover:bg-brand-500 hover:text-white rounded transition-all"
+                          >
+                            {expandedProduct === item.id ? 'Hide' : 'Variants'} ({item.variants?.length || 0})
+                          </button>
+                          <span>{item.name}</span>
+                        </div>
+                      </td>
                       <td><span className="font-mono text-xs text-text-secondary">{item.sku}</span></td>
                       <td className="text-text-secondary text-sm">{item.category_name || '—'}</td>
                       <td>
@@ -138,6 +150,23 @@ export default function Inventory() {
                             <button className="btn-secondary text-xs py-1.5" onClick={() => setAdjusting(null)}>
                               Cancel
                             </button>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                    {expandedProduct === item.id && (
+                      <tr key={`vars-${item.id}`} className="bg-bg-hover/10">
+                        <td colSpan={8} className="p-4 pl-10 border-b border-border">
+                          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+                            {item.variants?.map(v => (
+                              <div key={v.id} className="p-3 bg-bg-secondary border border-border rounded-xl">
+                                <p className="text-xs font-bold text-text-primary">{v.name}</p>
+                                <p className="text-[10px] text-text-muted font-mono">{item.sku}-{v.sku_suffix}</p>
+                                <p className="text-xs mt-2 text-text-secondary font-medium">
+                                  Stock: <span className={v.stock === 0 ? 'text-accent-rose font-bold' : 'text-text-primary font-bold'}>{v.stock}</span> units
+                                </p>
+                              </div>
+                            ))}
                           </div>
                         </td>
                       </tr>

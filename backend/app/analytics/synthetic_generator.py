@@ -506,23 +506,20 @@ def compute_product_weights(catalog_df: pd.DataFrame, orders_df: pd.DataFrame) -
     return weights_arr / weights_arr.sum()
 
 
-def compute_cost_for_variant(row: dict, category_ratios: dict, global_ratio: float = 0.45) -> tuple:
+def compute_cost_for_variant(row: dict, category_ratios: dict = None, global_ratio: float = 0.40) -> tuple:
     """
-    Resolve cost using the audit-defined hierarchy:
-    1. Real cost from products export (Cost per item field)
-    2. Category average cost ratio (from variants with real cost)
-    3. Global fallback ratio (45% — matches Egyptian apparel margins)
+    Resolve cost using the production-aligned model:
+    1. Real cost from products export (Cost per item field) if present and positive
+    2. Estimated cost derived using Selling Price = Cost * 2.5 (Cost = Price / 2.5)
     Returns (cost, is_estimated).
     """
-    price = row['Price']
-    if row['IsCostReal']:
+    price = float(row['Price'])
+    # If a real cost exists in the catalog and is positive, use it
+    if row.get('IsCostReal') and row.get('Cost_raw') and float(row['Cost_raw']) > 0:
         return float(row['Cost_raw']), False
 
-    category = row.get('Category', '')
-    if category in category_ratios:
-        return price * category_ratios[category], True
-
-    return price * global_ratio, True
+    # Otherwise, derive cost as Price / 2.5
+    return round(price / 2.5, 2), True
 
 
 def build_category_cost_ratios(catalog_df: pd.DataFrame) -> dict:

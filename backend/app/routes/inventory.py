@@ -1,7 +1,8 @@
 from flask import Blueprint, jsonify, request
 from app import db
-from app.models import Inventory, Product, Category, InventoryLog, AuditLog
+from app.models import Inventory, Product, Category, InventoryLog, AuditLog, ProductVariant
 from datetime import datetime
+from sqlalchemy import func
 from .auth import token_required, roles_required
 
 inventory_bp = Blueprint('inventory', __name__)
@@ -92,8 +93,22 @@ def adjust_inventory(current_user, product_id):
 @token_required
 def inventory_summary(current_user):
     """Quick summary stats."""
-    total    = Inventory.query.count()
+    total_products = Product.query.count()
+    total_variants = ProductVariant.query.count()
     low      = Inventory.query.filter(Inventory.quantity <= Inventory.reorder_point, Inventory.quantity > 0).count()
     out      = Inventory.query.filter(Inventory.quantity == 0).count()
-    in_stock = total - low - out
-    return jsonify({'total': total, 'in_stock': in_stock, 'low_stock': low, 'out_of_stock': out})
+    in_stock = total_products - low - out
+    
+    # Calculate total inventory value
+    value = db.session.query(
+        func.sum(Inventory.quantity * Product.cost)
+    ).join(Product, Inventory.product_id == Product.id).scalar() or 0.0
+    
+    return jsonify({
+        'total': total_products,
+        'total_variants': total_variants,
+        'in_stock': in_stock,
+        'low_stock': low,
+        'out_of_stock': out,
+        'value': round(value, 2)
+    })

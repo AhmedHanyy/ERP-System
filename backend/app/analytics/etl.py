@@ -178,9 +178,10 @@ def get_daily_sales_df_with_synthetic() -> pd.DataFrame:
 
 
 def get_product_sales_df(include_synthetic: bool = False) -> pd.DataFrame:
-    """OLAP-ready product performance aggregation."""
+    """OLAP-ready product performance aggregation aggregated at the base product level."""
     df = preprocess_sales(extract_sales_data(include_synthetic=include_synthetic))
-    return df.groupby(['product_id', 'product_name', 'product_type', 'category']).agg(
+    return df.groupby(['product_name', 'product_type', 'category']).agg(
+        product_id=('product_id', 'min'),
         units_sold=('quantity', 'sum'),
         revenue=('revenue', 'sum'),
         profit=('profit', 'sum'),

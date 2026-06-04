@@ -17,13 +17,25 @@ export default function Procurement() {
   const [activeTab,  setActiveTab]  = useState('requests')
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [prefillSuggestion, setPrefillSuggestion] = useState(null)
+  
+  const [page, setPage] = useState(1)
+  const [pages, setPages] = useState(1)
+  const [total, setTotal] = useState(0)
+  const [stats, setStats] = useState([])
 
   const loadRequests = useCallback(async () => {
     try {
-      const data = await procurementApi.listRequests()
-      setRequests(data)
+      const statusFilter = activeTab === 'requests' ? 'Draft,Sent,Confirmed' : 'Received,Cancelled';
+      const [res, statsData] = await Promise.all([
+        procurementApi.listRequests({ page, per_page: 20, status: statusFilter }),
+        procurementApi.getStats()
+      ]);
+      setRequests(res.requests || []);
+      setPages(res.pages || 1);
+      setTotal(res.total || 0);
+      setStats(statsData || []);
     } catch { setError('Failed to load procurement requests') }
-  }, [])
+  }, [page, activeTab])
 
   const loadSuggestions = useCallback(async () => {
     try {
@@ -43,6 +55,11 @@ export default function Procurement() {
     }
     init()
   }, [loadRequests, loadSuggestions])
+
+  const handleTabChange = (tab) => {
+    setActiveTab(tab)
+    setPage(1)
+  }
 
   const handleUpdateStatus = async (id, status) => {
     try {
@@ -78,7 +95,7 @@ export default function Procurement() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
          <div className="glass-card p-4 flex items-center gap-4">
             <div className="p-3 rounded-xl bg-brand-50 text-brand-600 font-bold text-lg">
-               {requests.filter(r => r.status !== 'Received').length}
+               {stats.filter(s => ['Draft', 'Sent', 'Confirmed'].includes(s.status)).reduce((a, b) => a + b.count, 0)}
             </div>
             <div>
                <p className="text-[10px] font-bold text-text-muted uppercase">Active POs</p>
@@ -87,7 +104,11 @@ export default function Procurement() {
          </div>
          <div className="glass-card p-4 flex items-center gap-4">
             <div className="p-3 rounded-xl bg-emerald-50 text-emerald-600 font-bold text-lg">
-               {(requests.length * 0.92).toFixed(1)}%
+               {(() => {
+                  const rec = stats.find(s => s.status === 'Received')?.count || 0;
+                  const can = stats.find(s => s.status === 'Cancelled')?.count || 0;
+                  return rec + can > 0 ? ((rec / (rec + can)) * 100).toFixed(1) + '%' : '100.0%';
+               })()}
             </div>
             <div>
                <p className="text-[10px] font-bold text-text-muted uppercase">Fulfillment Rate</p>
@@ -150,7 +171,7 @@ export default function Procurement() {
               {['requests', 'history'].map(tab => (
                  <button
                    key={tab}
-                   onClick={() => setActiveTab(tab)}
+                   onClick={() => handleTabChange(tab)}
                    className={`text-sm font-semibold capitalize transition-all relative py-2 ${
                      activeTab === tab ? 'text-brand-400' : 'text-text-muted hover:text-text-secondary'
                    }`}
@@ -171,7 +192,7 @@ export default function Procurement() {
                         </tr>
                       </thead>
                       <tbody>
-                        {requests.filter(r => r.status !== 'Received' && r.status !== 'Cancelled').map(r => (
+                        {requests.map(r => (
                           <tr key={r.id}>
                             <td className="max-w-[150px]">
                               <p className="text-sm font-medium truncate">{r.product_name}</p>
@@ -221,7 +242,7 @@ export default function Procurement() {
                         </tr>
                       </thead>
                       <tbody>
-                        {requests.filter(r => r.status === 'Received' || r.status === 'Cancelled').map(r => (
+                        {requests.map(r => (
                           <tr key={r.id} className="opacity-70">
                             <td><p className="text-xs">{r.product_name}</p></td>
                             <td><p className="text-xs">{r.supplier_name}</p></td>
@@ -236,6 +257,17 @@ export default function Procurement() {
                 </div>
               )}
             </div>
+
+            {/* Pagination Controls */}
+            {pages > 1 && (
+              <div className="flex items-center justify-between border-t border-border px-6 py-4">
+                <span className="text-xs text-text-muted">Showing page {page} of {pages} ({total} requests)</span>
+                <div className="flex gap-2">
+                  <button className="btn-secondary py-1.5 px-3 text-xs" onClick={() => setPage(p => Math.max(1, p-1))} disabled={page === 1}>Prev</button>
+                  <button className="btn-secondary py-1.5 px-3 text-xs" onClick={() => setPage(p => Math.min(pages, p+1))} disabled={page === pages}>Next</button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>

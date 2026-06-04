@@ -26,15 +26,17 @@ from app.models import Customer
 
 
 SEGMENT_MAP = {
-    0: 'Champion',
-    1: 'Loyal',
-    2: 'At-Risk',
-    3: 'Lost',
+    'Champion': 'Champion',
+    'Loyal':    'Loyal',
+    'New':      'New',
+    'At-Risk':  'At-Risk',
+    'Lost':     'Lost',
 }
 
 SEGMENT_CONFIG = {
     'Champion': {'color': '#10B981', 'description': 'Bought recently, buy often, spend the most'},
     'Loyal':    {'color': '#6366F1', 'description': 'Buy regularly and respond well to promotions'},
+    'New':      {'color': '#0EA5E9', 'description': 'Bought recently, only one order'},
     'At-Risk':  {'color': '#F59E0B', 'description': 'Used to buy often but haven\'t recently'},
     'Lost':     {'color': '#F43F5E', 'description': 'Lowest RFM scores, haven\'t purchased in a long time'},
 }
@@ -43,7 +45,7 @@ SEGMENT_CONFIG = {
 def compute_rfm() -> dict:
     """
     Full RFM analysis pipeline.
-    Returns: per-customer RFM data + cluster assignments + segment summary.
+    Returns: per-customer RFM data + segment summary.
     """
     df = extract_customer_data()
 
@@ -61,47 +63,48 @@ def compute_rfm() -> dict:
         monetary=('total_amount', 'sum')
     ).reset_index()
 
-    # Normalize for clustering
-    scaler = StandardScaler()
-    # For recency: invert so higher = better (lower days = more recent)
-    rfm_scaled = rfm[['recency', 'frequency', 'monetary']].copy()
-    rfm_scaled['recency'] = -rfm_scaled['recency']  # flip sign
-    X_scaled = scaler.fit_transform(rfm_scaled)
-
-    # K-Means clustering
-    n_clusters = min(4, len(rfm))
-    kmeans = KMeans(n_clusters=n_clusters, random_state=42, n_init=10)
-    rfm['cluster'] = kmeans.fit_predict(X_scaled)
-
-    # Map clusters to meaningful segments based on centroid ordering
-    # Sort clusters by combined RFM "goodness" (high freq+monetary, low recency days)
-    cluster_means = rfm.groupby('cluster').agg(
-        avg_recency=('recency', 'mean'),
-        avg_frequency=('frequency', 'mean'),
-        avg_monetary=('monetary', 'mean')
-    )
-    cluster_means['score'] = (
-        -cluster_means['avg_recency'] +
-        cluster_means['avg_frequency'] * 10 +
-        cluster_means['avg_monetary'] / 100
-    )
-    sorted_clusters = cluster_means.sort_values('score', ascending=False).index.tolist()
-    cluster_to_segment = {cluster: SEGMENT_MAP.get(i, f'Group {i}')
-                          for i, cluster in enumerate(sorted_clusters)}
-    rfm['segment'] = rfm['cluster'].map(cluster_to_segment)
-
     # Compute RFM score (1-5 scale per dimension)
     rfm['r_score'] = pd.qcut(rfm['recency'], 5, labels=[5,4,3,2,1], duplicates='drop').astype(float)
     rfm['f_score'] = pd.qcut(rfm['frequency'].rank(method='first'), 5, labels=[1,2,3,4,5], duplicates='drop').astype(float)
     rfm['m_score'] = pd.qcut(rfm['monetary'].rank(method='first'), 5, labels=[1,2,3,4,5], duplicates='drop').astype(float)
     rfm['rfm_score'] = (rfm['r_score'] + rfm['f_score'] + rfm['m_score']) / 3
 
-    # Update customer segments in DB
+    # Rule-based cohort classification
+    def classify_rfm_row(row):
+        r = row['r_score']
+        f = row['f_score']
+        if r >= 4 and f >= 4:
+            return 'Champion'
+        elif r >= 4 and f == 1:
+            return 'New'
+        elif r >= 3 and f >= 3:
+            return 'Loyal'
+        elif r <= 2 and f >= 3:
+            return 'At-Risk'
+        elif r <= 2 and f <= 2:
+            return 'Lost'
+        else:
+            return 'Loyal' if r >= 3 else 'Lost'
+
+    rfm['segment'] = rfm.apply(classify_rfm_row, axis=1)
+
+    # Resolve operational Customer.id using email to prevent warehouse/operational key mismatch
+    op_cust_ids = db.session.query(Customer.id, Customer.email).all()
+    email_to_id = {c.email.lower().strip(): c.id for c in op_cust_ids if c.email}
+
+    # Fast bulk update the Customer model in operational DB
+    update_mappings = []
     for _, row in rfm.iterrows():
-        customer = Customer.query.get(int(row['customer_id']))
-        if customer:
-            customer.segment   = row['segment']
-            customer.rfm_score = round(float(row['rfm_score']), 2)
+        email_clean = (row['email'] or '').lower().strip()
+        op_id = email_to_id.get(email_clean)
+        if op_id:
+            update_mappings.append({
+                'id': op_id,
+                'segment': row['segment'],
+                'rfm_score': round(float(row['rfm_score']), 2)
+            })
+            
+    db.session.bulk_update_mappings(Customer, update_mappings)
     db.session.commit()
 
     # Segment summary
@@ -145,7 +148,7 @@ def compute_rfm() -> dict:
         'customers': customers_data,
         'segments': segments_data,
         'model_info': {
-            'method': 'RFM + K-Means (k=4)',
+            'method': 'Parametric RFM Decision Rules',
             'snapshot_date': str(snapshot_date.date()),
             'total_customers': len(rfm),
         }
