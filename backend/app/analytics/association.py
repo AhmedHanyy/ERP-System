@@ -62,21 +62,37 @@ def run_market_basket(min_support: float = 0.003, min_confidence: float = 0.1) -
     except Exception as e:
         return {'error': str(e), 'rules': [], 'itemsets': []}
 
+    # Ensure variety: group by antecedent and take the top 2 rules per antecedent
+    # This prevents the top 30 rules from being dominated by the 2 most popular product types
+    diverse_rules = []
+    seen_antecedents = {}
+    for _, row in rules.iterrows():
+        ant_key = tuple(row['antecedents'])
+        if seen_antecedents.get(ant_key, 0) < 2:
+            diverse_rules.append(row)
+            seen_antecedents[ant_key] = seen_antecedents.get(ant_key, 0) + 1
+            if len(diverse_rules) >= 30:
+                break
+                
+    rules_df = pd.DataFrame(diverse_rules)
+
     # Format rules
-    rules_data = [
-        {
-            'antecedents': list(row['antecedents']),
-            'consequents': list(row['consequents']),
-            'support': round(float(row['support']), 4),
-            'confidence': round(float(row['confidence']), 4),
-            'lift': round(float(row['lift']), 4),
-            'interpretation': f"Customers who buy {', '.join(row['antecedents'])} "
-                              f"also tend to buy {', '.join(row['consequents'])} "
-                              f"({round(row['confidence']*100,1)}% of the time, "
-                              f"{round(row['lift'],2)}x more likely)"
-        }
-        for _, row in rules.head(30).iterrows()
-    ]
+    rules_data = []
+    if not rules_df.empty:
+        rules_data = [
+            {
+                'antecedents': list(row['antecedents']),
+                'consequents': list(row['consequents']),
+                'support': round(float(row['support']), 4),
+                'confidence': round(float(row['confidence']), 4),
+                'lift': round(float(row['lift']), 4),
+                'interpretation': f"Customers who buy {', '.join(row['antecedents'])} "
+                                  f"also tend to buy {', '.join(row['consequents'])} "
+                                  f"({round(row['confidence']*100,1)}% of the time, "
+                                  f"{round(row['lift'],2)}x more likely)"
+            }
+            for _, row in rules_df.iterrows()
+        ]
 
     # Frequent itemsets
     itemsets_data = [

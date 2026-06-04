@@ -252,11 +252,35 @@ def get_reorder_suggestions(current_user):
         Inventory, Product.id == Inventory.product_id
     ).filter(Inventory.quantity <= Inventory.reorder_point).all()
 
-    # Business rule: is_printed → supplier Feathers (1), else Printlet (2)
+    from app.models.order import Order, OrderItem
+    sixty_days_ago = datetime.utcnow() - timedelta(days=60)
+    
+    # Pre-calculate velocity for low_stock products to avoid N+1 queries
+    product_ids = [p.id for p, _ in low_stock]
+    velocities = {}
+    if product_ids:
+        velocity_results = db.session.query(
+            OrderItem.product_id,
+            func.sum(OrderItem.quantity).label('qty')
+        ).join(Order).filter(
+            OrderItem.product_id.in_(product_ids),
+            Order.created_at >= sixty_days_ago,
+            Order.status != 'Cancelled'
+        ).group_by(OrderItem.product_id).all()
+        velocities = {r.product_id: r.qty for r in velocity_results}
+
+    # Business rule: Printed products → Printlet (2), Basic products → Feathers (1)
+    from app.models.warehouse import DimProduct
+    printed_titles_query = db.session.query(DimProduct.Title).filter(
+        DimProduct.Graphic != 'Plain',
+        DimProduct.Graphic != 'Basic',
+        DimProduct.Graphic != None
+    ).distinct()
+    printed_titles = {r[0] for r in printed_titles_query.all()}
+    
     def get_supplier_id(product):
-        name = (product.name or '').lower()
-        desc = (product.description or '').lower()
-        return 1 if ('printed' in name or 'graphic' in name or 'printed' in desc) else 2
+        name = (product.name or '')
+        return 2 if name in printed_titles else 1
 
     # Last received PO per product (aggregated)
     last_pos = db.session.query(
@@ -270,21 +294,38 @@ def get_reorder_suggestions(current_user):
 
     suggestions = []
     for product, inv in low_stock:
+        velocity = velocities.get(product.id, 0)
+        # Suppress dead stock: if 0 sales in 60 days, do not suggest a reorder
+        if velocity <= 0:
+            continue
+            
         last_po = last_po_map.get(product.id)
         sugg_supplier_id = get_supplier_id(product)
         supplier = Supplier.query.get(sugg_supplier_id)
 
         suggestions.append({
             'product_id': product.id,
-            'product_name': product.name,
-            'product_sku': product.sku,
+            'name': product.name,
+            'sku': product.sku,
             'current_stock': inv.quantity,
             'reorder_point': inv.reorder_point,
             'suggested_quantity': inv.reorder_quantity,
-            'estimated_cost': round(product.cost * inv.reorder_quantity, 2),
             'supplier_id': sugg_supplier_id,
             'supplier_name': supplier.name if supplier else 'Unknown',
+            'last_ordered': last_po.last_date.isoformat() if last_po else None,
+            'velocity_60d': velocity,
             'urgency': 'Critical' if inv.quantity == 0 else 'High',
+            'estimated_cost': round(product.cost * inv.reorder_quantity, 2),
+            'logic_explanation': f"Recommended to order {inv.reorder_quantity} units from {supplier.name if supplier else 'Unknown'} because current stock ({inv.quantity}) is at or below the reorder point ({inv.reorder_point}), and recent sales velocity ({velocity} units/60d) justifies restocking."
         })
 
-    return jsonify(sorted(suggestions, key=lambda x: x['current_stock']))
+    return jsonify({
+        'suggestions': suggestions,
+        'meta': {
+            'total_depleted': len(low_stock),
+            'out_of_stock': sum(1 for _, i in low_stock if i.quantity == 0),
+            'low_stock': sum(1 for _, i in low_stock if i.quantity > 0),
+            'active_suggestions': len(suggestions),
+            'dead_stock_suppressed': len(low_stock) - len(suggestions),
+        }
+    })

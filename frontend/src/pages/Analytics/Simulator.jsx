@@ -10,16 +10,22 @@ export default function Simulator() {
   const [adSpend, setAdSpend] = useState(5000)
   const [conversion, setConversion] = useState(2.5)
 
-  // Mock simulation logic
+  // Mock simulation logic with dampened elasticity
   const generateSimulatedData = () => {
     const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun']
     const baseRevenue = 50000
-    const impact = (adSpend * (conversion / 100)) + (baseRevenue * (markup / 100))
+    
+    // Dampened impact: higher markup should eventually hurt conversion
+    // This creates a more realistic ROI curve rather than unchecked exponential growth
+    const priceElasticityPenalty = markup > 50 ? (markup - 50) * 0.1 : 0
+    const effectiveConversion = Math.max(0.5, conversion - priceElasticityPenalty)
+    
+    const impact = (adSpend * (effectiveConversion / 100)) + (baseRevenue * (markup / 100) * 0.4)
     
     return months.map((m, i) => ({
       name: m,
       baseline: baseRevenue + (i * 2000),
-      simulated: baseRevenue + (i * 2000) + (impact * (1 + i/10))
+      simulated: baseRevenue + (i * 2000) + (impact * (1 + (i*0.05)))
     }))
   }
 
@@ -85,16 +91,37 @@ export default function Simulator() {
                  Predicted revenue increase based on multi-variate informatics model.
               </p>
            </div>
+           
+           {/* Assumptions Breakdown */}
+           <div className="glass-card p-5 border border-amber-500/20 bg-amber-500/5">
+              <p className="text-[10px] font-bold uppercase text-amber-600 dark:text-amber-500 mb-3 flex items-center gap-1">
+                 <AlertCircle className="w-3 h-3" /> Assumptions Breakdown
+              </p>
+              <div className="space-y-2 text-[10px] text-text-secondary font-medium">
+                 <p className="flex justify-between"><span>Base Revenue:</span> <span>EGP 50,000</span></p>
+                 <p className="flex justify-between"><span>Price Penalty:</span> <span>{markup > 50 ? `-${((markup - 50) * 0.1).toFixed(1)}% Conversion` : 'None'}</span></p>
+                 <p className="flex justify-between border-t border-border/50 pt-2 mt-2">
+                    <span>Effective Conversion:</span> <span className="text-text-primary font-bold">{Math.max(0.5, conversion - (markup > 50 ? (markup - 50) * 0.1 : 0)).toFixed(1)}%</span>
+                 </p>
+                 <p className="text-text-muted italic mt-2 leading-tight">
+                    * Simulation dampens exponential growth at extreme price markups to simulate real-world price elasticity.
+                 </p>
+              </div>
+           </div>
         </div>
 
         {/* Forecast Comparison */}
         <div className="lg:col-span-3 glass-card p-6">
-           <div className="flex items-center justify-between mb-8">
-              <div>
-                 <h3 className="section-title mb-1">Revenue Impact Simulation</h3>
-                 <p className="text-[10px] text-text-muted italic">Comparing Baseline vs. Modified Strategy Scenarios</p>
-              </div>
-              <div className="flex gap-4">
+            <div className="flex items-center justify-between mb-4">
+               <div>
+                  <h3 className="section-title mb-1 flex items-center gap-2">
+                     Revenue Impact Simulation
+                  </h3>
+                  <p className="text-[10px] text-amber-600 dark:text-amber-400 font-bold flex items-center gap-1 mt-2">
+                     <AlertCircle className="w-3 h-3" /> Scenario estimates based on simplified forecasting assumptions.
+                  </p>
+               </div>
+               <div className="flex gap-4">
                  <div className="flex items-center gap-1.5 text-[10px] font-bold text-text-muted uppercase">
                     <div className="w-2.5 h-2.5 rounded-full bg-bg-hover" /> Baseline
                  </div>

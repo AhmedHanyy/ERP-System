@@ -14,23 +14,31 @@ export default function Inventory() {
   const [error,   setError]   = useState(null)
   const [search,  setSearch]  = useState('')
   const [status,  setStatus]  = useState('')
+  const [type,    setType]    = useState('')
+  const [printStyle, setPrintStyle] = useState('')
   const [adjusting, setAdjusting] = useState(null)  // product_id being adjusted
   const [adjQty, setAdjQty]   = useState(0)
   const [adjType, setAdjType] = useState('add')
   const [expandedProduct, setExpandedProduct] = useState(null)
 
+  const [page, setPage] = useState(1)
+
   const load = useCallback(async () => {
     setLoading(true)
     try {
       const [inv, sum] = await Promise.all([
-        inventoryApi.list({ search, status }),
+        inventoryApi.list({ search, status, type, print_style: printStyle, page }),
         inventoryApi.summary()
       ])
       setItems(inv.items)
-      setSummary(sum)
+      // Save pagination state from API if available (assume inv.pages exists)
+      setSummary(prev => ({ ...prev, ...sum, pages: inv.pages, current_page: inv.current_page }))
     } catch { setError('Failed to load inventory') }
     finally { setLoading(false) }
-  }, [search, status])
+  }, [search, status, type, printStyle, page])
+
+  // Reset to page 1 on filter changes
+  useEffect(() => { setPage(1) }, [search, status, type, printStyle])
 
   useEffect(() => { load() }, [load])
 
@@ -73,7 +81,19 @@ export default function Inventory() {
           <input className="input pl-10" placeholder="Search products..." value={search}
             onChange={e => setSearch(e.target.value)} />
         </div>
-        <select className="select w-44" value={status} onChange={e => setStatus(e.target.value)}>
+        <select className="select w-36" value={type} onChange={e => setType(e.target.value)}>
+          <option value="">All Types</option>
+          <option value="Hoodie">Hoodie</option>
+          <option value="T-Shirt">T-Shirt</option>
+          <option value="Sweatpants">Sweatpants</option>
+          <option value="Tops">Tops</option>
+        </select>
+        <select className="select w-36" value={printStyle} onChange={e => setPrintStyle(e.target.value)}>
+          <option value="">All Styles</option>
+          <option value="Printed">Printed/Graphic</option>
+          <option value="Basic">Basic</option>
+        </select>
+        <select className="select w-36" value={status} onChange={e => setStatus(e.target.value)}>
           {STATUS_FILTERS.map(s => <option key={s} value={s}>{s || 'All Status'}</option>)}
         </select>
       </div>
@@ -156,17 +176,35 @@ export default function Inventory() {
                     )}
                     {expandedProduct === item.id && (
                       <tr key={`vars-${item.id}`} className="bg-bg-hover/10">
-                        <td colSpan={8} className="p-4 pl-10 border-b border-border">
-                          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
-                            {item.variants?.map(v => (
-                              <div key={v.id} className="p-3 bg-bg-secondary border border-border rounded-xl">
-                                <p className="text-xs font-bold text-text-primary">{v.name}</p>
-                                <p className="text-[10px] text-text-muted font-mono">{item.sku}-{v.sku_suffix}</p>
-                                <p className="text-xs mt-2 text-text-secondary font-medium">
-                                  Stock: <span className={v.stock === 0 ? 'text-accent-rose font-bold' : 'text-text-primary font-bold'}>{v.stock}</span> units
-                                </p>
-                              </div>
-                            ))}
+                        <td colSpan={8} className="p-0 border-b border-border">
+                          <div className="bg-bg-secondary/50 p-4">
+                            <h4 className="text-xs font-bold text-text-muted uppercase tracking-wider mb-3">Product Variants</h4>
+                            <div className="overflow-hidden rounded-lg border border-border/50">
+                              <table className="w-full text-left text-sm">
+                                <thead className="bg-bg-hover text-text-muted text-[10px] uppercase">
+                                  <tr>
+                                    <th className="px-4 py-2 font-semibold">SKU</th>
+                                    <th className="px-4 py-2 font-semibold">Color</th>
+                                    <th className="px-4 py-2 font-semibold">Size</th>
+                                    <th className="px-4 py-2 font-semibold">Stock</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {item.variants?.map(v => (
+                                    <tr key={v.id} className="border-t border-border/50 hover:bg-bg-hover/30">
+                                      <td className="px-4 py-2 font-mono text-[10px] text-text-secondary">{item.sku}-{v.sku_suffix}</td>
+                                      <td className="px-4 py-2 text-xs">{v.name}</td>
+                                      <td className="px-4 py-2 text-xs font-bold">{v.type || 'OS'}</td>
+                                      <td className="px-4 py-2">
+                                        <span className={v.stock === 0 ? 'text-accent-rose font-bold text-xs' : 'text-text-primary font-bold text-xs'}>
+                                          {v.stock}
+                                        </span>
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
                           </div>
                         </td>
                       </tr>
@@ -175,6 +213,29 @@ export default function Inventory() {
                 ))}
               </tbody>
             </table>
+          </div>
+        )}
+        
+        {/* Pagination Controls */}
+        {!loading && !error && items.length > 0 && summary.pages > 1 && (
+          <div className="p-4 border-t border-border flex items-center justify-between">
+            <p className="text-xs text-text-muted">Page {summary.current_page} of {summary.pages}</p>
+            <div className="flex gap-2">
+              <button 
+                className="btn-secondary text-xs py-1"
+                disabled={summary.current_page <= 1}
+                onClick={() => setPage(p => Math.max(1, p - 1))}
+              >
+                Previous
+              </button>
+              <button 
+                className="btn-secondary text-xs py-1"
+                disabled={summary.current_page >= summary.pages}
+                onClick={() => setPage(p => Math.min(summary.pages, p + 1))}
+              >
+                Next
+              </button>
+            </div>
           </div>
         )}
       </div>

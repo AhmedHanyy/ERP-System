@@ -94,7 +94,11 @@ export default function Orders() {
                         <p className="text-xs text-text-muted">{o.customer_email}</p>
                       </div>
                     </td>
-                    <td className="text-text-secondary text-sm">—</td>
+                    <td className="text-text-secondary text-sm">
+                      {o.items_count != null
+                        ? <span className="font-medium">{o.items_count} {o.items_count === 1 ? 'Item' : 'Items'}</span>
+                        : '—'}
+                    </td>
                     <td className="font-semibold text-sm">EGP {o.total_amount?.toLocaleString()}</td>
                     <td className="text-accent-emerald text-sm font-medium">EGP {o.profit?.toLocaleString()}</td>
                     <td>

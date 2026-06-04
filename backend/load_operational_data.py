@@ -687,46 +687,40 @@ def run_phase_a():
         
         np.random.seed(42)
         
-        all_variants = ProductVariant.query.all()
-        for variant in all_variants:
-            product = variant.product
-            price = product.price + variant.price_adj
-            cost = round(price / 2.5, 2)
-            
+        # Generate a very small set of realistic demo purchase orders (e.g., 5 total)
+        # instead of flooding the DB with thousands of synthetic POs.
+        import random
+        all_products = Product.query.all()
+        demo_products = random.sample(all_products, min(5, len(all_products)))
+        
+        for product in demo_products:
+            cost = round((product.price or 100) / 2.5, 2)
             supplier_id = 1 if is_printed_product(product) else 2
             
-            sim_date = start_date + timedelta(days=int(np.random.randint(0, 30)))
-            while sim_date < end_date:
-                po_interval = int(np.random.randint(60, 90))
-                sim_date += timedelta(days=po_interval)
-                if sim_date >= end_date:
-                    break
-                
-                lead_time = int(np.random.randint(5, 14))
-                received_date = sim_date + timedelta(days=lead_time)
-                
-                moq = int(np.random.choice([50, 100, 150, 200], p=[0.4, 0.35, 0.15, 0.10]))
-                status = np.random.choice(
-                    ['Received', 'Confirmed', 'Cancelled'],
-                    p=[0.88, 0.07, 0.05]
-                )
-                
-                po = ProcurementRequest(
-                    supplier_id=supplier_id,
-                    product_id=product.id,
-                    quantity=moq,
-                    unit_cost=cost,
-                    total_cost=round(moq * cost, 2),
-                    status=status,
-                    is_auto_suggested=False,
-                    notes='Historical restock simulation',
-                    is_real=False,
-                    requested_at=sim_date,
-                    expected_at=received_date,
-                    received_at=received_date if status == 'Received' else None
-                )
-                db.session.add(po)
-                proc_requests_count += 1
+            # Create a recent, realistic PO
+            sim_date = datetime.utcnow() - timedelta(days=random.randint(2, 20))
+            lead_time = random.randint(5, 14)
+            received_date = sim_date + timedelta(days=lead_time)
+            
+            moq = int(np.random.choice([50, 100, 150, 200], p=[0.4, 0.35, 0.15, 0.10]))
+            status = 'Received' if received_date < datetime.utcnow() else 'Confirmed'
+            
+            po = ProcurementRequest(
+                supplier_id=supplier_id,
+                product_id=product.id,
+                quantity=moq,
+                unit_cost=cost,
+                total_cost=round(moq * cost, 2),
+                status=status,
+                is_auto_suggested=True,
+                notes='Demo operational restock',
+                is_real=True,  # Tagged as real so it shows up in normal metrics
+                requested_at=sim_date,
+                expected_at=received_date,
+                received_at=received_date if status == 'Received' else None
+            )
+            db.session.add(po)
+            proc_requests_count += 1
                 
         db.session.commit()
         print(f'  Procurement requests generated: {proc_requests_count:,}')

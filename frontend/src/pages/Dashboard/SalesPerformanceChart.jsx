@@ -3,16 +3,17 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { dashboardApi } from '@/services/api'
 import { PageLoader } from '@/components/shared/States'
 
-export default function SalesPerformanceChart() {
+export default function SalesPerformanceChart({ dateRange = 'all' }) {
   const [data, setData] = useState([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    dashboardApi.getSalesTrend('30d').then(d => {
+    setLoading(true)
+    dashboardApi.getSalesTrend(dateRange).then(d => {
       setData(d)
       setLoading(false)
     }).catch(() => setLoading(false))
-  }, [])
+  }, [dateRange])
 
   if (loading) return <PageLoader />
 
@@ -23,10 +24,6 @@ export default function SalesPerformanceChart() {
           <h3 className="section-title mb-0">Sales Performance</h3>
           <p className="text-xs text-text-muted">Net revenue generated over time</p>
         </div>
-        <select className="bg-bg-hover text-[11px] font-bold py-1 px-2 rounded-lg border-none outline-none cursor-pointer">
-           <option>Last 30 Days</option>
-           <option>Last 6 Months</option>
-        </select>
       </div>
 
       <div className="h-[280px]">

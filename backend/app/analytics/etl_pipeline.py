@@ -290,7 +290,40 @@ def run_etl_pipeline():
         except Exception as e:
             print(f'  No existing DimProduct found: {e}')
 
+        # Ensure 'Historical Unmapped Product' exists
+        has_unmapped = any(p.ProductKey == 0 for p in existing_products.values())
         new_product_inserts = []
+        
+        if not has_unmapped:
+            new_product_inserts.append({
+                'ProductKey':     0,
+                'SKU':            'UNMAPPED-000',
+                'Handle':         'unmapped-product',
+                'Title':          'Historical Unmapped Product',
+                'Category':       'Archived',
+                'ProductType':    'Archived',
+                'ProductFamily':  'Archived',
+                'Fit':            None,
+                'Graphic':        None,
+                'VariantName':    'Default',
+                'Size':           'OS',
+                'Color':          'N/A',
+                'Fabric':         'N/A',
+                'TargetGender':   'Unisex',
+                'SizesOffered':   'OS',
+                'Barcode':        '00000000',
+                'Price':          0.0,
+                'CompareAtPrice': None,
+                'Cost':           0.0,
+                'IsCostEstimated':True,
+                'Vendor':         'System',
+                'Status':         'archived',
+                'IsActive':       False,
+                'RowStartDate':   start_time,
+                'RowEndDate':     None,
+                'IsCurrent':      True,
+            })
+
         scd2_updates        = []
         sku_to_prod_key     = {}
         handled_skus        = set()
@@ -426,7 +459,9 @@ def run_etl_pipeline():
                 for p in all_current:
                     if p.Title and p.Title.startswith(base):
                         return p.ProductKey
-            return list(sku_to_prod_key.values())[0] if sku_to_prod_key else 1
+            
+            # Use dedicated unmapped product bucket instead of inflating a real product
+            return 0
 
         real_sales_records = []
         for _, row in orders_df.iterrows():

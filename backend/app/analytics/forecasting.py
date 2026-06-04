@@ -14,15 +14,29 @@ DATA STRATEGY:
 import numpy as np
 import pandas as pd
 from sklearn.linear_model import LinearRegression
-from .etl import get_daily_sales_df_with_synthetic, preprocess_sales, extract_sales_data
+from .etl import get_daily_sales_df, preprocess_sales, extract_sales_data
 
 
-def forecast_overall_revenue(days_ahead: int = 30) -> dict:
+def forecast_overall_revenue(days_ahead: int = 30, range_param: str = 'all') -> dict:
     """
     Forecast total daily revenue for next N days using Ridge regression with seasonality.
-    Trains on real + synthetic historical data to capture long-term trends and seasonality.
+    Trains on REAL historical data only (Shopify-derived, IsSynthetic=False).
     """
-    daily = get_daily_sales_df_with_synthetic()
+    daily = get_daily_sales_df(include_synthetic=False)
+
+    if range_param != 'all' and not daily.empty:
+        last_date = daily['date'].max()
+        if range_param == '30d':
+            start_date = last_date - pd.Timedelta(days=30)
+        elif range_param == '90d':
+            start_date = last_date - pd.Timedelta(days=90)
+        elif range_param == '6m':
+            start_date = last_date - pd.Timedelta(days=180)
+        elif range_param == '12m':
+            start_date = last_date - pd.Timedelta(days=365)
+        else:
+            start_date = daily['date'].min()
+        daily = daily[daily['date'] >= start_date]
 
     if len(daily) < 7:
         return {'historical': [], 'forecast': [], 'model': 'insufficient_data'}
@@ -84,7 +98,74 @@ def forecast_overall_revenue(days_ahead: int = 30) -> dict:
     ]
 
     r2 = model.score(X, y)
-    model_quality = 'Good' if r2 >= 0.4 else 'Low' if r2 >= 0.05 else 'Poor'
+    # Thresholds:
+    #   Good  ≥ 0.35  (model explains a meaningful share of variance)
+    #   Low   ≥ 0.10  (some signal, but not reliable for business decisions)
+    #   Poor  < 0.10  (insufficient predictive signal; show explicit warning)
+    if r2 >= 0.35:
+        model_quality = 'Good'
+        confidence_note = None
+    elif r2 >= 0.10:
+        model_quality = 'Low'
+        confidence_note = 'Forecast confidence is low due to limited predictive signal. Treat projections as indicative only.'
+    else:
+        model_quality = 'Poor'
+        confidence_note = 'Forecast confidence is low due to limited predictive signal. Treat projections as indicative only.'
+
+    # Data-driven Seasonal Insights from actual monthly aggregates
+    insights = []
+    if len(daily) > 30:
+        import calendar
+        daily['month_num'] = daily['date'].dt.month
+        daily['year_num']  = daily['date'].dt.year
+        monthly = daily.groupby(['year_num', 'month_num'])['revenue'].sum().reset_index()
+        by_month = daily.groupby('month_num')['revenue'].sum().reset_index()
+        by_month.columns = ['month', 'revenue']
+        total_rev = by_month['revenue'].sum()
+
+        if not by_month.empty and total_rev > 0:
+            best_row = by_month.loc[by_month['revenue'].idxmax()]
+            worst_row = by_month.loc[by_month['revenue'].idxmin()]
+            best_name  = calendar.month_name[int(best_row['month'])]
+            worst_name = calendar.month_name[int(worst_row['month'])]
+            best_pct  = (best_row['revenue'] / total_rev) * 100
+            worst_pct = (worst_row['revenue'] / total_rev) * 100
+            
+            insights.append(f"{best_name} is the strongest trading month, contributing {best_pct:.1f}% of all revenue — likely driven by back-to-school or seasonal fashion cycles.")
+            insights.append(f"{worst_name} is historically the weakest month ({worst_pct:.1f}% of revenue). Consider targeted promotions or bundle offers to lift demand.")
+
+            # Egyptian retail patterns
+            months_present = set(by_month['month'].astype(int).tolist())
+            if 11 in months_present:
+                nov_rev = float(by_month[by_month['month'] == 11]['revenue'].values[0])
+                avg_rev = float(by_month['revenue'].mean())
+                if nov_rev > avg_rev * 1.2:
+                    insights.append("November shows above-average revenue — consistent with Black Friday / White Friday demand patterns.")
+
+            # Summer cooling (June-August)
+            summer_months = {6, 7, 8}
+            if summer_months & months_present:
+                summer_rev = float(by_month[by_month['month'].isin(summer_months)]['revenue'].sum())
+                summer_share = (summer_rev / total_rev) * 100
+                if summer_share > 25:
+                    insights.append(f"Summer months (Jun-Aug) account for {summer_share:.1f}% of revenue — strong demand for lightweight and casual apparel.")
+                else:
+                    insights.append(f"Summer months (Jun-Aug) contribute {summer_share:.1f}% of revenue — consider summer-specific campaigns to unlock latent demand.")
+
+            # Year-over-year growth check
+            years_available = sorted(monthly['year_num'].unique())
+            if len(years_available) >= 2:
+                y_last = years_available[-1]
+                y_prev = years_available[-2]
+                rev_last = float(monthly[monthly['year_num'] == y_last]['revenue'].sum())
+                rev_prev = float(monthly[monthly['year_num'] == y_prev]['revenue'].sum())
+                if rev_prev > 0:
+                    yoy_pct = ((rev_last - rev_prev) / rev_prev) * 100
+                    direction = 'grew' if yoy_pct > 0 else 'declined'
+                    insights.append(f"Revenue {direction} {abs(yoy_pct):.1f}% year-over-year from {y_prev} to {y_last}.")
+
+    if not insights:
+        insights.append("Awaiting more historical data to establish reliable seasonal trends. Minimum 30 days of real orders required.")
 
     return {
         'historical': historical_data,
@@ -93,10 +174,14 @@ def forecast_overall_revenue(days_ahead: int = 30) -> dict:
             'type': 'Ridge Seasonality Regression',
             'r2_score': round(r2, 4),
             'model_quality': model_quality,
+            'confidence_note': confidence_note,
             'days_ahead': days_ahead,
             'slope': round(float(model.coef_[0]), 4),
-            'note': 'Seasonality-aware linear model. R2 measures variance explained including cycles.'
-        }
+            'note': 'Trained on real Shopify-derived sales data only. Seasonality-aware linear model.',
+            'training_days': len(daily),
+            'avg_daily_revenue': round(float(daily['revenue'].mean()), 2),
+        },
+        'seasonal_insights': insights
     }
 
 

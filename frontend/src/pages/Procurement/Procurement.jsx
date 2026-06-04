@@ -11,6 +11,7 @@ import CreateProcurementModal from './CreateProcurementModal'
 export default function Procurement() {
   const [requests,   setRequests]   = useState([])
   const [suggestions, setSuggestions] = useState([])
+  const [suggMeta,    setSuggMeta]   = useState(null)
   const [loading,    setLoading]    = useState(true)
   const [suggestLoading, setSuggestLoading] = useState(true)
   const [error,      setError]      = useState(null)
@@ -41,7 +42,19 @@ export default function Procurement() {
     try {
       setSuggestLoading(true)
       const data = await procurementApi.getSuggestions()
-      setSuggestions(data)
+      // Handle new API format: { suggestions: [...], meta: {...} }
+      if (data && data.suggestions) {
+        setSuggestions(data.suggestions)
+        setSuggMeta(data.meta || null)
+      } else if (Array.isArray(data)) {
+        // Fallback for old format
+        setSuggestions(data)
+        setSuggMeta(null)
+      } else {
+        setSuggestions([])
+      }
+    } catch(e) {
+      setSuggestions([])
     } finally {
       setSuggestLoading(false)
     }
@@ -133,11 +146,29 @@ export default function Procurement() {
           <div className="glass-card overflow-hidden">
             <div className="p-4 border-b border-border bg-bg-hover/20 flex items-center justify-between">
               <h3 className="text-xs font-bold text-text-muted uppercase tracking-wider">AI Suggestions</h3>
-              <span className="badge-warning text-[10px]">{suggestions.length}</span>
+              <span className="badge-warning text-[10px]">{suggestions.length} Active</span>
             </div>
-            <div className="p-2 space-y-1">
+
+            {/* Audit breakdown */}
+            {suggMeta && (
+              <div className="px-3 py-2 bg-bg-hover/10 border-b border-border/50 grid grid-cols-2 gap-2">
+                <div className="p-1.5 bg-rose-500/5 border border-rose-500/10 rounded-lg text-center">
+                  <p className="text-[9px] text-text-muted uppercase">Out of Stock</p>
+                  <p className="text-sm font-black text-rose-400">{suggMeta.out_of_stock}</p>
+                </div>
+                <div className="p-1.5 bg-amber-500/5 border border-amber-500/10 rounded-lg text-center">
+                  <p className="text-[9px] text-text-muted uppercase">Low Stock</p>
+                  <p className="text-sm font-black text-amber-400">{suggMeta.low_stock}</p>
+                </div>
+                <div className="col-span-2 p-1.5 bg-slate-500/5 border border-slate-500/10 rounded-lg">
+                  <p className="text-[9px] text-text-muted">Dead stock suppressed: <span className="font-bold text-text-secondary">{suggMeta.dead_stock_suppressed}</span> (no sales in 60d)</p>
+                </div>
+              </div>
+            )}
+
+            <div className="p-2 space-y-1 max-h-[500px] overflow-y-auto">
               {suggestLoading ? <div className="p-4"><PageLoader /></div> :
-               suggestions.length === 0 ? <p className="p-4 text-center text-xs text-text-muted">Stock levels healthy</p> :
+               suggestions.length === 0 ? <p className="p-4 text-center text-xs text-text-muted">No active reorder suggestions</p> :
                 suggestions.map(s => (
                  <div key={s.product_id} className="p-3 bg-bg-hover/30 hover:bg-bg-hover rounded-xl border border-transparent hover:border-brand-500/20 transition-all group">
                     <div className="flex justify-between items-start mb-1">
@@ -145,10 +176,11 @@ export default function Procurement() {
                        <StatusBadge status={s.priority || s.urgency} showDot={false} />
                     </div>
                     <div className="space-y-1 my-2 text-[10px] text-text-secondary leading-normal">
+                       <p>Stock: <span className="text-rose-400 font-bold">{s.current_stock}</span> / Reorder at: {s.reorder_point}</p>
+                       <p>Velocity: <span className="text-text-primary font-bold">{s.velocity_60d}</span> units / 60d</p>
                        <p>Suggest: <span className="text-text-primary font-bold">{s.suggested_qty || s.suggested_quantity}</span> units</p>
-                       <p>Supplier: <span className="text-brand-500 font-bold">{s.recommended_supplier_name || s.last_supplier_name || 'None'}</span></p>
-                       <p>Reorder: <span className="text-amber-500 font-semibold">{s.suggested_reorder_date || 'Immediate'}</span></p>
-                       <p>Stockout: <span className="text-rose-500 font-semibold">{s.stockout_date || 'Critical'}</span></p>
+                       <p>Supplier: <span className="text-brand-500 font-bold">{s.supplier_name || 'None'}</span></p>
+                       {s.estimated_cost && <p>Est. Cost: <span className="text-text-primary font-bold">EGP {s.estimated_cost?.toLocaleString()}</span></p>}
                     </div>
                     <button 
                       onClick={() => openCreateWithSuggestion(s)}

@@ -12,11 +12,13 @@ inventory_bp = Blueprint('inventory', __name__)
 @roles_required('Admin', 'Operations Manager', 'Procurement Staff', 'Procurement Officer')
 def list_inventory(current_user):
     """Product inventory list with filters."""
-    category  = request.args.get('category', '')
-    status    = request.args.get('status', '')
-    search    = request.args.get('search', '')
-    page      = request.args.get('page', 1, type=int)
-    per_page  = request.args.get('per_page', 20, type=int)
+    category    = request.args.get('category', '')
+    status      = request.args.get('status', '')
+    search      = request.args.get('search', '')
+    type_filter = request.args.get('type', '')
+    print_style = request.args.get('print_style', '')
+    page        = request.args.get('page', 1, type=int)
+    per_page    = request.args.get('per_page', 20, type=int)
 
     query = db.session.query(Product, Inventory).join(
         Inventory, Product.id == Inventory.product_id
@@ -24,6 +26,21 @@ def list_inventory(current_user):
 
     if category:
         query = query.filter(Product.category_id == int(category))
+    if type_filter:
+        query = query.filter(Product.name.ilike(f'%{type_filter}%'))
+    if print_style:
+        from app.models.warehouse import DimProduct
+        printed_titles_query = db.session.query(DimProduct.Title).filter(
+            DimProduct.Graphic != 'Plain',
+            DimProduct.Graphic != 'Basic',
+            DimProduct.Graphic != None
+        ).distinct()
+        printed_titles = [r[0] for r in printed_titles_query.all()]
+        
+        if print_style == 'Printed':
+            query = query.filter(Product.name.in_(printed_titles))
+        elif print_style == 'Basic':
+            query = query.filter(~Product.name.in_(printed_titles))
     if search:
         query = query.filter(Product.name.ilike(f'%{search}%'))
     if status == 'Low Stock':

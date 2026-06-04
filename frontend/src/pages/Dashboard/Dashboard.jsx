@@ -17,6 +17,7 @@ export default function Dashboard() {
   const [forecast,  setForecast]  = useState(null)
   const [rfm,       setRfm]       = useState(null)
   const [basket,    setBasket]    = useState(null)
+  const [dateRange, setDateRange] = useState('all')
   
   const [loading, setLoading] = useState(true)
   const [error,   setError]   = useState(null)
@@ -27,8 +28,8 @@ export default function Dashboard() {
       setError(null)
       
       const [kpiData, forecastData, rfmData, basketData] = await Promise.all([
-        dashboardApi.getKPIs().catch(e => { console.error('KPI error:', e); return null; }),
-        analyticsApi.getForecast(30).catch(e => { console.error('Forecast error:', e); return null; }),
+        dashboardApi.getKPIs(dateRange).catch(e => { console.error('KPI error:', e); return null; }),
+        analyticsApi.getForecast(30, dateRange).catch(e => { console.error('Forecast error:', e); return null; }),
         analyticsApi.getRFM().catch(e => { console.error('RFM error:', e); return null; }),
         analyticsApi.getMarketBasket().catch(e => { console.error('Basket error:', e); return null; })
       ])
@@ -44,7 +45,7 @@ export default function Dashboard() {
     }
   }
 
-  useEffect(() => { loadData() }, [])
+  useEffect(() => { loadData() }, [dateRange])
 
   if (loading) return <PageLoader />
   if (error)   return <ErrorState message={error} onRetry={loadData} />
@@ -68,8 +69,18 @@ export default function Dashboard() {
         <div className="flex items-center gap-3">
             <div className="p-3 bg-white dark:bg-slate-900 border border-border-main rounded-2xl flex items-center gap-4 px-6 shadow-sm">
                 <div className="text-right">
-                    <p className="text-[10px] font-black text-text-muted uppercase tracking-widest">Current Period</p>
-                    <p className="text-sm font-bold text-text-primary">Fiscal Q3 / 2026</p>
+                    <p className="text-[10px] font-black text-text-muted uppercase tracking-widest">Date Range</p>
+                    <select 
+                        className="text-sm font-bold text-text-primary bg-transparent border-none outline-none cursor-pointer p-0 m-0"
+                        value={dateRange}
+                        onChange={(e) => setDateRange(e.target.value)}
+                    >
+                        <option value="30d">Last 30 Days</option>
+                        <option value="90d">Last 90 Days</option>
+                        <option value="6m">Last 6 Months</option>
+                        <option value="12m">Last 12 Months</option>
+                        <option value="all">All Time / Live</option>
+                    </select>
                 </div>
                 <div className="w-px h-8 bg-border-main" />
                 <Calendar className="w-5 h-5 text-blue-500" />
@@ -84,10 +95,44 @@ export default function Dashboard() {
 
       {/* 📊 Strategic Intelligence Row (Task 5) */}
       {(role === 'Admin' || role === 'Analytics Manager') && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
             <div className="lg:col-span-1"><ForecastingWidget stats={forecast} /></div>
             <div className="lg:col-span-1"><SegmentationWidget data={rfm} /></div>
             <div className="lg:col-span-1"><BasketAnalysisWidget bundles={basket} /></div>
+            <div className="lg:col-span-1">
+               <div className="glass-card p-6 h-full flex flex-col relative overflow-hidden group hover:shadow-card-hover transition-all duration-300">
+                  <div className="absolute top-0 right-0 w-32 h-32 bg-rose-500/5 rounded-bl-full -z-10 group-hover:bg-rose-500/10 transition-colors"></div>
+                  <div className="flex justify-between items-start mb-6">
+                     <div>
+                        <h3 className="font-bold text-text-primary mb-1">Unmapped Revenue</h3>
+                        <p className="text-[10px] text-text-muted uppercase tracking-wider font-bold">Historical Legacy Data</p>
+                     </div>
+                     <div className="p-2.5 bg-rose-500/10 rounded-xl text-rose-500">
+                        <AlertTriangle className="w-5 h-5" />
+                     </div>
+                  </div>
+                  
+                  <div className="mt-auto space-y-4">
+                     <div>
+                        <p className="text-3xl font-bold text-text-primary tracking-tight">
+                           <span className="text-sm text-text-muted mr-1 font-normal">EGP</span>
+                           {kpis?.unmapped_stats?.revenue?.toLocaleString() || 0}
+                        </p>
+                     </div>
+                     
+                     <div className="grid grid-cols-2 gap-4 pt-4 border-t border-border">
+                        <div>
+                           <p className="text-[10px] text-text-muted uppercase mb-1">Units Sold</p>
+                           <p className="text-sm font-bold text-text-primary">{kpis?.unmapped_stats?.units?.toLocaleString() || 0}</p>
+                        </div>
+                        <div>
+                           <p className="text-[10px] text-text-muted uppercase mb-1">Revenue Share</p>
+                           <p className="text-sm font-bold text-rose-400">{kpis?.unmapped_stats?.share_pct || 0}%</p>
+                        </div>
+                     </div>
+                  </div>
+               </div>
+            </div>
         </div>
       )}
 
@@ -97,7 +142,7 @@ export default function Dashboard() {
         <div className="xl:col-span-8 space-y-8">
           {(role === 'Admin' || role === 'Analytics Manager') && (
             <div className="glass-card p-8 group">
-               <SalesPerformanceChart />
+               <SalesPerformanceChart dateRange={dateRange} />
             </div>
           )}
 

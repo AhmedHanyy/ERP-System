@@ -28,7 +28,7 @@ api.interceptors.response.use(
 
 // ─── Dashboard ────────────────────────────────────────────────────────────────
 export const dashboardApi = {
-  getKPIs:          ()       => api.get('/dashboard/kpis'),
+  getKPIs:          (range='all') => api.get(`/dashboard/kpis?range=${range}`),
   getSalesTrend:    (period) => api.get(`/dashboard/sales-trend?period=${period}`),
   getTopProducts:   ()       => api.get('/dashboard/top-products'),
   getOrderStatus:   ()       => api.get('/dashboard/order-status-distribution'),
@@ -72,7 +72,7 @@ export const procurementApi = {
 
 // ─── Analytics ────────────────────────────────────────────────────────────────
 export const analyticsApi = {
-  getForecast:      (days)  => api.get(`/analytics/forecast?days=${days}`),
+  getForecast:      (days, range='all')  => api.get(`/analytics/forecast?days=${days}&range=${range}`),
   getProductForecast: (id, days) => api.get(`/analytics/forecast/product/${id}?days=${days}`),
   getRFM:           ()      => api.get('/analytics/rfm'),
   getMarketBasket:  (params) => api.get('/analytics/market-basket', { params }),

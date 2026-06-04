@@ -5,7 +5,7 @@ import {
   ComposedChart, Line, Area, XAxis, YAxis, CartesianGrid, 
   Tooltip, ResponsiveContainer, Legend 
 } from 'recharts'
-import { Sparkles, TrendingUp, Calendar, Info, AlertTriangle } from 'lucide-react'
+import { Sparkles, TrendingUp, Calendar, Info, AlertTriangle, Target } from 'lucide-react'
 
 export default function Forecasting() {
   const [data,     setData]     = useState(null)
@@ -27,6 +27,9 @@ export default function Forecasting() {
   const historical = (data?.historical || []).map(d => ({ ...d, type: 'historical' }))
   const forecast   = (data?.forecast || []).map(d => ({ ...d, type: 'forecast' }))
   const chartData  = [...historical, ...forecast]
+  const modelInfo  = data?.model_info || {}
+  const confidenceNote = modelInfo.confidence_note
+  const isLowConfidence = modelInfo.model_quality === 'Low' || modelInfo.model_quality === 'Poor'
 
   return (
     <div className="space-y-6">
@@ -106,34 +109,39 @@ export default function Forecasting() {
         <div className="space-y-4">
            {/* Model Info */}
             <div className="glass-card p-5 border-l-4 border-accent-violet">
-               <p className="text-[10px] font-bold text-accent-violet uppercase tracking-widest mb-1">Model: {data?.model_info?.type || 'Standard'}</p>
+               <p className="text-[10px] font-bold text-accent-violet uppercase tracking-widest mb-1">Model: {modelInfo.type || 'Standard'}</p>
                <div className="flex items-center justify-between mb-4">
                   <h4 className="text-sm font-bold text-text-primary">Decision Support</h4>
-                  <div className="badge-info text-[10px]">R² Score: {data?.model_info?.r2_score || 0}</div>
+                  <div className="badge-info text-[10px]">R² Score: {modelInfo.r2_score ?? 0}</div>
                </div>
               <div className="space-y-3">
-                  {data?.model_info?.model_quality === 'Poor' && (
-                     <div className="p-3 bg-rose-500/10 border border-rose-500/20 text-rose-400 rounded-xl flex items-start gap-2">
+                  {isLowConfidence && (
+                     <div className="p-3 bg-amber-500/10 border border-amber-500/30 text-amber-600 dark:text-amber-400 rounded-xl flex items-start gap-2">
                         <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
                         <div>
-                           <p className="text-[10px] font-black uppercase">Low Model Fit Quality</p>
-                           <p className="text-[9px] text-rose-400/80 leading-normal mt-0.5">The sales history is highly volatile. Recommendations should be treated with caution.</p>
+                           <p className="text-[10px] font-black uppercase">Low Forecast Confidence</p>
+                           <p className="text-[9px] opacity-80 leading-normal mt-0.5">{confidenceNote || 'Treat projections as indicative only.'}</p>
                         </div>
                      </div>
                   )}
                   <div className="p-3 bg-bg-hover/40 rounded-xl">
                      <p className="text-xs text-text-muted mb-1">Growth Trend (Daily)</p>
                      <p className="text-lg font-bold text-text-primary">
-                        {(data?.model_info?.slope || 0) > 0 ? '+' : ''}{(data?.model_info?.slope || 0).toFixed(2)} 
+                        {(modelInfo.slope || 0) > 0 ? '+' : ''}{(modelInfo.slope || 0).toFixed(2)} 
                         <span className="text-[10px] text-text-muted font-normal ml-1">EGP/day</span>
                      </p>
+                  </div>
+                  <div className="p-3 bg-bg-hover/40 rounded-xl">
+                     <p className="text-xs text-text-muted mb-1">Avg Historical Daily Revenue</p>
+                     <p className="text-sm font-bold text-text-primary">EGP {(modelInfo.avg_daily_revenue || 0).toLocaleString()}</p>
+                     <p className="text-[9px] text-text-muted mt-0.5">Based on {modelInfo.training_days || 0} real trading days</p>
                   </div>
                  <div className="flex gap-2 p-2 bg-accent-violet/5 rounded-xl text-accent-violet">
                     <Info className="w-4 h-4 shrink-0 mt-0.5" />
                     <p className="text-[10px] leading-relaxed font-medium">
-                       {data?.model_info?.model_quality === 'Poor' 
-                          ? "Volatility is high. Review catalog distributions manually before committing capital to major procurement orders."
-                          : "Predicted demand trend is stable. Suggesting 15% inventory buffer for next 30 days."
+                       {isLowConfidence
+                          ? 'High volatility detected. Use projections for directional guidance only.'
+                          : 'Predicted demand trend is stable. Suggesting 15% inventory buffer for next 30 days.'
                        }
                     </p>
                  </div>
@@ -167,31 +175,58 @@ export default function Forecasting() {
                  </p>
               </div>
            </div>
+           
+            {/* Strategic Intelligence */}
+            {data?.seasonal_insights && data.seasonal_insights.length > 0 && (
+              <div className="glass-card p-5">
+                <h4 className="text-sm font-bold text-text-primary mb-4 flex items-center gap-2">
+                   <Target className="w-4 h-4 text-brand-500" /> Strategic Intelligence
+                </h4>
+                <div className="space-y-3">
+                  {data.seasonal_insights.map((insight, idx) => (
+                    <div key={idx} className="p-3 bg-brand-500/5 border border-brand-500/10 rounded-xl flex gap-3 items-start">
+                      <div className="w-1.5 h-1.5 rounded-full bg-brand-400 mt-1.5 shrink-0" />
+                      <p className="text-xs text-text-secondary leading-relaxed">{insight}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
         </div>
       </div>
       {/* Professional Insights Section */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 glass-card p-6" style={{ background: 'linear-gradient(to bottom right, var(--bg-surface), rgba(37, 99, 235, 0.05))' }}>
-           <h4 className="text-sm font-bold text-text-primary mb-4 flex items-center gap-2">
+           <h4 className="text-sm font-bold text-text-primary mb-1 flex items-center gap-2">
               <Sparkles className="w-4 h-4 text-brand-500" /> Strategic Recommendation
            </h4>
+           <p className="text-[10px] text-amber-600 dark:text-amber-400 font-semibold mb-4 flex items-center gap-1">
+              <AlertTriangle className="w-3 h-3" /> Scenario estimates based on simplified forecasting assumptions.
+           </p>
            <div className="space-y-4">
               <div className="flex gap-4">
                  <div className="w-1 bg-brand-500 rounded-full" />
                  <p className="text-xs text-text-secondary leading-relaxed">
-                    Based on the <span className="font-bold text-brand-600 dark:text-blue-400">Linear Regression</span> models, we project a 
-                    revenue target of <span className="font-bold text-text-primary">EGP {(chartData[chartData.length-1]?.forecast || 0).toLocaleString()}</span> by the end of this horizon. 
-                    The model accounts for daily seasonality and shows a baseline stability of 92%.
+                    The regression model projects a daily revenue endpoint of{' '}
+                    <span className="font-bold text-text-primary">EGP {(chartData[chartData.length-1]?.forecast || 0).toLocaleString()}</span>{' '}
+                    by the end of this {modelInfo.days_ahead || 30}-day horizon.
+                    {isLowConfidence && ' Confidence is limited — treat this as a directional indicator, not a guarantee.'}
                  </p>
               </div>
               <div className="grid grid-cols-2 gap-4 pt-2">
                  <div className="p-3 border border-border rounded-xl" style={{ backgroundColor: 'var(--bg-hover)' }}>
-                    <p className="text-[10px] font-bold text-text-muted uppercase mb-1">Risk Assessment</p>
-                    <p className="text-xs font-bold text-text-primary">Low Volatility Identified</p>
+                    <p className="text-[10px] font-bold text-text-muted uppercase mb-1">Model Quality</p>
+                    <p className={`text-xs font-bold ${
+                       modelInfo.model_quality === 'Good' ? 'text-emerald-600 dark:text-emerald-400' :
+                       modelInfo.model_quality === 'Low'  ? 'text-amber-600 dark:text-amber-400' :
+                       'text-rose-600 dark:text-rose-400'
+                    }`}>{modelInfo.model_quality || '—'}</p>
                  </div>
                  <div className="p-3 border border-border rounded-xl" style={{ backgroundColor: 'var(--bg-hover)' }}>
                     <p className="text-[10px] font-bold text-text-muted uppercase mb-1">Recommended Action</p>
-                    <p className="text-xs font-bold text-brand-600 dark:text-blue-400">Increase Reorder Buffer 15%</p>
+                    <p className="text-xs font-bold text-brand-600 dark:text-blue-400">
+                       {isLowConfidence ? 'Review manually before ordering' : 'Maintain 15% inventory buffer'}
+                    </p>
                  </div>
               </div>
            </div>

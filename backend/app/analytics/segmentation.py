@@ -63,28 +63,53 @@ def compute_rfm() -> dict:
         monetary=('total_amount', 'sum')
     ).reset_index()
 
-    # Compute RFM score (1-5 scale per dimension)
-    rfm['r_score'] = pd.qcut(rfm['recency'], 5, labels=[5,4,3,2,1], duplicates='drop').astype(float)
-    rfm['f_score'] = pd.qcut(rfm['frequency'].rank(method='first'), 5, labels=[1,2,3,4,5], duplicates='drop').astype(float)
-    rfm['m_score'] = pd.qcut(rfm['monetary'].rank(method='first'), 5, labels=[1,2,3,4,5], duplicates='drop').astype(float)
+    # RFM Score: Recency (1-5, lower days = higher score)
+    # Use quantile-based binning. For recency: lower days = better score.
+    try:
+        rfm['r_score'] = pd.qcut(rfm['recency'], 5, labels=[5, 4, 3, 2, 1], duplicates='drop').astype(float)
+    except ValueError:
+        rfm['r_score'] = 3.0
+
+    # Frequency scoring: use ABSOLUTE thresholds so single-purchase customers
+    # cannot randomly land in the top score tier due to qcut tie-breaking.
+    # Most customers in a DTC brand buy once — this should not equal "Champion".
+    def score_frequency(f):
+        if f >= 5:   return 5.0
+        elif f >= 3: return 4.0
+        elif f >= 2: return 3.0
+        else:        return 1.0   # 1 purchase → lowest frequency score
+
+    rfm['f_score'] = rfm['frequency'].apply(score_frequency)
+
+    # Monetary scoring: quantile-based
+    try:
+        rfm['m_score'] = pd.qcut(rfm['monetary'].rank(method='first'), 5, labels=[1, 2, 3, 4, 5], duplicates='drop').astype(float)
+    except ValueError:
+        rfm['m_score'] = 3.0
+
     rfm['rfm_score'] = (rfm['r_score'] + rfm['f_score'] + rfm['m_score']) / 3
 
-    # Rule-based cohort classification
+    # Rule-based segment classification.
+    # Champions: recent, frequent (3+), AND high monetary — not just recent+any-frequency.
     def classify_rfm_row(row):
         r = row['r_score']
         f = row['f_score']
-        if r >= 4 and f >= 4:
+        m = row['m_score']
+        freq = row['frequency']
+        if r >= 4 and f >= 4 and m >= 4:
             return 'Champion'
-        elif r >= 4 and f == 1:
-            return 'New'
+        elif freq == 1 and r >= 4:
+            return 'New'               # Recent one-time buyer
         elif r >= 3 and f >= 3:
             return 'Loyal'
         elif r <= 2 and f >= 3:
-            return 'At-Risk'
-        elif r <= 2 and f <= 2:
+            return 'At-Risk'           # Frequent but gone cold
+        elif r <= 2 and f <= 1:
             return 'Lost'
+        elif r >= 3:
+            return 'Loyal'
         else:
-            return 'Loyal' if r >= 3 else 'Lost'
+            return 'Lost'
 
     rfm['segment'] = rfm.apply(classify_rfm_row, axis=1)
 

@@ -48,6 +48,11 @@ class Order(db.Model):
         )
         return round(revenue - cogs, 2)
 
+    @property
+    def items_count(self):
+        """Total units across all line items (zero-cost: items already loaded for profit calc)."""
+        return sum(item.quantity for item in self.items)
+
     def to_dict(self, include_items=False):
         d = {
             'id': self.id,
@@ -61,6 +66,7 @@ class Order(db.Model):
             'discount': round(self.discount or 0.0, 2),
             'shipping_fee': round(self.shipping_fee or 0.0, 2),
             'profit': self.profit,
+            'items_count': self.items_count,
             'notes': self.notes,
             'created_at': self.created_at.isoformat(),
             'updated_at': self.updated_at.isoformat(),

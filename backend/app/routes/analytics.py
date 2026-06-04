@@ -19,7 +19,8 @@ analytics_bp = Blueprint('analytics', __name__)
 @roles_required('Admin', 'Analytics Manager')
 def revenue_forecast(current_user):
     days = request.args.get('days', 30, type=int)
-    return jsonify(forecast_overall_revenue(days_ahead=days))
+    range_param = request.args.get('range', 'all')
+    return jsonify(forecast_overall_revenue(days_ahead=days, range_param=range_param))
 
 @analytics_bp.route('/forecast/product/<int:product_id>')
 @roles_required('Admin', 'Analytics Manager')
@@ -255,11 +256,69 @@ def bi_report(current_user):
         } for r in region_results
     ]
 
-    # 5. Safety Stock and Risk Analysis
+    # 5. Top 20 Products — from operational DB (matches Shopify rankings)
+    # Warehouse has a known product-mapping gap: Baggy Sweatpants (Shopify #1) = 0 WH units;
+    # Trippy Chimpanzee inflated 4.67x. Operational DB has correct attribution.
+    from app.models import Order as OpOrder, OrderItem
+    top_products_q = db.session.query(
+        Product.id.label('product_id'),
+        Product.name.label('name'),
+        Product.sku.label('sku'),
+        func.sum(OrderItem.quantity).label('units'),
+        func.sum(OrderItem.quantity * OrderItem.unit_price).label('revenue'),
+        func.sum(OrderItem.quantity * Product.cost).label('cogs'),
+    ).join(OrderItem, OrderItem.product_id == Product.id
+    ).join(OpOrder, OrderItem.order_id == OpOrder.id
+    ).filter(OpOrder.status != 'Cancelled'
+    ).group_by(Product.id, Product.name, Product.sku
+    ).order_by(func.sum(OrderItem.quantity * OrderItem.unit_price).desc()
+    ).limit(20).all()
+
+    top_20_products = [{
+        'name':    r.name or 'Unknown',
+        'units':   int(r.units or 0),
+        'revenue': round(float(r.revenue or 0), 2),
+        'profit':  round(float(r.revenue or 0) - float(r.cogs or 0), 2),
+    } for r in top_products_q]
+
+    # 6. Top 20 Variants — from operational DB (each Product IS a variant in the operational model)
+    top_variants_q = db.session.query(
+        Product.id.label('product_id'),
+        Product.sku.label('sku'),
+        Product.name.label('name'),
+        func.sum(OrderItem.quantity).label('units'),
+        func.sum(OrderItem.quantity * OrderItem.unit_price).label('revenue'),
+        func.sum(OrderItem.quantity * Product.cost).label('cogs'),
+    ).join(OrderItem, OrderItem.product_id == Product.id
+    ).join(OpOrder, OrderItem.order_id == OpOrder.id
+    ).filter(OpOrder.status != 'Cancelled'
+    ).group_by(Product.id, Product.sku, Product.name
+    ).order_by(func.sum(OrderItem.quantity * OrderItem.unit_price).desc()
+    ).limit(20).all()
+
+    def _parse_color_size(name: str):
+        """Extract color from 'Product Name - Color' format."""
+        parts = name.rsplit(' - ', 1)
+        return (parts[1] if len(parts) == 2 else '', '')
+
+    top_20_variants = []
+    for r in top_variants_q:
+        color, size = _parse_color_size(r.name or '')
+        top_20_variants.append({
+            'sku':     r.sku or '',
+            'title':   r.name or '',
+            'color':   color,
+            'size':    size,
+            'units':   int(r.units or 0),
+            'revenue': round(float(r.revenue or 0), 2),
+            'profit':  round(float(r.revenue or 0) - float(r.cogs or 0), 2),
+        })
+
+
+    # 7. Safety Stock and Risk Analysis (lead time = 1 day per business model)
     from app.analytics.etl import extract_sales_data
     sales_df = extract_sales_data(include_synthetic=False)
     
-    # Calculate demand variance per product family
     daily_prod_sales = sales_df.groupby(['product_name', 'order_date'])['quantity'].sum().reset_index()
     prod_stats = daily_prod_sales.groupby('product_name').agg(
         avg_daily=('quantity', 'mean'),
@@ -275,12 +334,12 @@ def bi_report(current_user):
             std_d = float(stats_row.iloc[0]['std_daily'] or 0)
             if pd.isna(std_d):
                 std_d = 0.0
-            lead_time = 7.0  # Lead time fallback for standard suppliers
+            lead_time = 1.0  # Business model: ~1 day lead time (Feathers/Printlet)
             safety = int(math.ceil(1.65 * std_d * math.sqrt(lead_time)))
-            if safety < 10:
-                safety = 10
+            if safety < 3:
+                safety = 3
         else:
-            safety = 10
+            safety = 3
 
         status = 'Healthy' if inv.quantity > safety else 'Low Stock' if inv.quantity > 0 else 'Stockout'
         safety_stock_report.append({
@@ -296,7 +355,9 @@ def bi_report(current_user):
         'financial_summary': financial_summary,
         'monthly_revenue': monthly_revenue,
         'region_distribution': region_distribution,
-        'safety_stock_report': safety_stock_report[:30]
+        'safety_stock_report': safety_stock_report[:30],
+        'top_20_products': top_20_products,
+        'top_20_variants': top_20_variants,
     })
 
 @analytics_bp.route('/notifications')

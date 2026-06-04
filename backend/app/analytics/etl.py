@@ -75,6 +75,7 @@ def extract_sales_data(include_synthetic: bool = False) -> pd.DataFrame:
         JOIN {schema}dim_date d     ON fs."DateKey"     = d."DateKey"
         WHERE fs."FinancialStatus" != 'voided'
           AND fs."IsCancelled" = FALSE
+          AND fs."ProductKey" != 0
           {synth_filter}
     """
     df = pd.read_sql(query, db.engine)
@@ -122,7 +123,11 @@ def extract_basket_data() -> pd.DataFrame:
     """
     Extract basket data for Market Basket Analysis.
     Uses REAL orders only — synthetic baskets would distort association rules.
-    Includes multi-item orders only.
+
+    CRITICAL: Groups at ProductFamily + Graphic level to prevent:
+    - Spurious color-to-color associations (White Top -> Black Top = same product!)
+    - Over-aggregation (all basics become one item)
+    Uses ProductFamily as the item identifier (e.g., "Washed Oversized T-Shirt").
     """
     is_pg  = db.engine.dialect.name == 'postgresql'
     schema = 'warehouse.' if is_pg else ''
@@ -130,8 +135,7 @@ def extract_basket_data() -> pd.DataFrame:
     query = f"""
         SELECT
             fs."OrderNumber"   AS order_id,
-            p."Title"          AS product_name,
-            p."ProductType"    AS product_type,
+            COALESCE(p."ProductFamily", p."ProductType", 'Other') AS product_name,
             fs."Quantity"      AS quantity
         FROM {schema}fact_sales fs
         JOIN {schema}dim_product p ON fs."ProductKey" = p."ProductKey"
@@ -139,6 +143,8 @@ def extract_basket_data() -> pd.DataFrame:
         WHERE fs."IsSynthetic"     = FALSE
           AND fs."IsCancelled"     = FALSE
           AND fs."FinancialStatus" != 'voided'
+          AND fs."ProductKey"      != 0
+          AND p."ProductFamily" IS NOT NULL
     """
     df = pd.read_sql(query, db.engine)
     return df
@@ -178,16 +184,59 @@ def get_daily_sales_df_with_synthetic() -> pd.DataFrame:
 
 
 def get_product_sales_df(include_synthetic: bool = False) -> pd.DataFrame:
-    """OLAP-ready product performance aggregation aggregated at the base product level."""
-    df = preprocess_sales(extract_sales_data(include_synthetic=include_synthetic))
-    return df.groupby(['product_name', 'product_type', 'category']).agg(
-        product_id=('product_id', 'min'),
-        units_sold=('quantity', 'sum'),
-        revenue=('revenue', 'sum'),
-        profit=('profit', 'sum'),
-        order_count=('order_id', 'nunique'),
-        is_cost_estimated=('is_cost_estimated', 'first'),
-    ).reset_index().sort_values('revenue', ascending=False)
+    """
+    OLAP-ready product performance aggregation — sourced from OPERATIONAL DB.
+
+    Uses Order + OrderItem + Product instead of warehouse FactSales because the
+    warehouse has a known product-mapping gap: ~2,887 sweatpants units (including
+    Shopify's #1 product "Baggy Wide Leg - Black") are in ProductKey=0 and thus
+    invisible or misattributed in FactSales. The operational DB has correct
+    attribution for all 6,699 orders and matches Shopify's product rankings.
+
+    NOTE: include_synthetic param is kept for API compatibility but has no effect
+    since the operational DB does not contain synthetic records.
+    """
+    from app.models import Order, OrderItem, Product
+    from app.models.product import Category
+    from sqlalchemy import func
+
+    rows = db.session.query(
+        Product.id.label('product_id'),
+        Product.name.label('product_name'),
+        Category.name.label('category_name'),
+        func.sum(OrderItem.quantity).label('units_sold'),
+        func.sum(OrderItem.quantity * OrderItem.unit_price).label('revenue'),
+        func.sum(OrderItem.quantity * Product.cost).label('cogs'),
+        func.count(OrderItem.order_id.distinct()).label('order_count'),
+    ).join(OrderItem, OrderItem.product_id == Product.id
+    ).join(Order, OrderItem.order_id == Order.id
+    ).outerjoin(Category, Product.category_id == Category.id
+    ).filter(Order.status != 'Cancelled'
+    ).group_by(Product.id, Product.name, Category.name
+    ).order_by(func.sum(OrderItem.quantity * OrderItem.unit_price).desc()
+    ).all()
+
+    records = []
+    for r in rows:
+        revenue = float(r.revenue or 0)
+        cogs    = float(r.cogs or 0)
+        records.append({
+            'product_name':      r.product_name,
+            'product_type':      r.category_name or 'Unknown',
+            'category':          r.category_name or 'Unknown',
+            'product_id':        r.product_id,
+            'units_sold':        int(r.units_sold or 0),
+            'revenue':           revenue,
+            'profit':            round(revenue - cogs, 2),
+            'order_count':       int(r.order_count or 0),
+            'is_cost_estimated': 0,
+        })
+
+    return pd.DataFrame(records) if records else pd.DataFrame(columns=[
+        'product_name', 'product_type', 'category', 'product_id',
+        'units_sold', 'revenue', 'profit', 'order_count', 'is_cost_estimated'
+    ])
+
 
 
 def get_discount_performance_df() -> pd.DataFrame:
